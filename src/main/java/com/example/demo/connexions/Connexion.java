@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.time.LocalDate;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,6 +23,8 @@ public class Connexion implements Serializable{
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+	 @Enumerated(EnumType.STRING)
+	private DatabaseType dbtype;
 	private String host ;
 	private String databaseName ;
 	private int port ;
@@ -29,9 +33,12 @@ public class Connexion implements Serializable{
 	private LocalDate  createdAt ;
 	private LocalDate updatedAt;
 	
-	public Connexion(String host, String databaseName, int port, String password, String username, LocalDate createdAt,
-			LocalDate updatedAt) {
+	
+
+	public Connexion(DatabaseType dbtype, String host, String databaseName, int port, String password, String username,
+			LocalDate createdAt, LocalDate updatedAt) {
 		super();
+		this.dbtype = dbtype;
 		this.host = host;
 		this.databaseName = databaseName;
 		this.port = port;
@@ -51,6 +58,14 @@ public class Connexion implements Serializable{
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+	
+	public DatabaseType getDbtype() {
+		return dbtype;
+	}
+
+	public void setDbtype(DatabaseType dbtype) {
+		this.dbtype = dbtype;
 	}
 
 	public String getHost() {
