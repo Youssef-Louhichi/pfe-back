@@ -2,42 +2,38 @@ package com.example.demo.connexions;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.List;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.example.demo.database.Database;
+
+import jakarta.persistence.*;
 
 @Entity
 @Table(name="connexions")
 public class Connexion implements Serializable{
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
-	
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	 @Enumerated(EnumType.STRING)
+
+	@Enumerated(EnumType.STRING)
 	private DatabaseType dbtype;
-	private String host ;
-	private String databaseName ;
-	private int port ;
-	private String password ;
-	private String username ;
-	private LocalDate  createdAt ;
+
+	private String host;
+	private String databaseName;
+	private int port;
+	private String password;
+	private String username;
+	private LocalDate createdAt;
 	private LocalDate updatedAt;
-	
-	
+
+	@OneToMany(mappedBy = "connexion", cascade = CascadeType.ALL)
+	private List<Database> databases;
 
 	public Connexion(DatabaseType dbtype, String host, String databaseName, int port, String password, String username,
-			LocalDate createdAt, LocalDate updatedAt) {
-		super();
+			LocalDate createdAt, LocalDate updatedAt, List<Database> databases) {
 		this.dbtype = dbtype;
 		this.host = host;
 		this.databaseName = databaseName;
@@ -46,11 +42,10 @@ public class Connexion implements Serializable{
 		this.username = username;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
+		this.databases = databases;
 	}
 
-	public Connexion() {
-		super();
-	}
+	public Connexion() {}
 
 	public Long getId() {
 		return id;
@@ -59,7 +54,7 @@ public class Connexion implements Serializable{
 	public void setId(Long id) {
 		this.id = id;
 	}
-	
+
 	public DatabaseType getDbtype() {
 		return dbtype;
 	}
@@ -123,11 +118,12 @@ public class Connexion implements Serializable{
 	public void setUpdatedAt(LocalDate updatedAt) {
 		this.updatedAt = updatedAt;
 	}
-	
-	
-	
-	
-	
-	
 
+	public List<Database> getDatabases() {
+		return databases;
+	}
+
+	public void setDatabases(List<Database> databases) {
+		this.databases = databases;
+	}
 }
