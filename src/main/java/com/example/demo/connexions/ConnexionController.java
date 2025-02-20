@@ -52,5 +52,11 @@ public class ConnexionController {
         connexionService.deleteConnexion(id);
     }
     
-
+    @PostMapping("/test")
+    public String testConnection(@RequestBody Connexion connexion) {
+        connexionService.testConnection(connexion);
+        return "connection status";
+    }
+    
+ 
 }
