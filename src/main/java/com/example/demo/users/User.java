@@ -1,11 +1,16 @@
 package com.example.demo.users;
 
 import java.io.Serializable;
+import java.util.List;
+
+import com.example.demo.database.Database;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -21,7 +26,10 @@ public class User implements Serializable{
 	private Long identif;
 	private String mail;
 	private String password;
-	private String role;
+	
+	@ManyToMany(mappedBy = "users")
+	@JsonIgnoreProperties("users")
+    private List<Database> databases;
 	
 	
 	public Long getIdentif() {
@@ -44,17 +52,21 @@ public class User implements Serializable{
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	public String getRole() {
-		return role;
+	
+	public List<Database> getDatabases() {
+		return databases;
 	}
-	public void setRole(String role) {
-		this.role = role;
+
+	public void setDatabases(List<Database> databases) {
+		this.databases = databases;
 	}
-	public User(String mail, String password, String role) {
+
+	public User(String mail, String password, String role,List<Database> databases) {
 		
 		this.mail = mail;
 		this.password = password;
-		this.role = role;
+		this.databases=databases;
+		
 	}
 	public User() {
 		

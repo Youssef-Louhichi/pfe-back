@@ -31,7 +31,7 @@ public class UserService {
         return userRepository.findById(id).map(user -> {
             user.setMail(updatedUser.getMail());
             user.setPassword(updatedUser.getPassword());
-            user.setRole(updatedUser.getRole());
+            user.setDatabases(updatedUser.getDatabases());
             return userRepository.save(user);
         }).orElse(null);
     }
