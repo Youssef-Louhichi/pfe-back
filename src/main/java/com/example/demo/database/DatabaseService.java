@@ -7,6 +7,8 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.users.User;
+
 @Service
 public class DatabaseService {
 
@@ -48,5 +50,12 @@ public class DatabaseService {
     // Delete database entry
     public void deleteDatabase(Long id) {
         databaseRepository.deleteById(id);
+    }
+    
+    
+    public List<User> getUsersByDatabaseId(Long dbId) {
+        Database database = databaseRepository.findByIdWithUsers(dbId)
+                .orElseThrow(() -> new RuntimeException("Database not found with id: " + dbId));
+        return database.getUsers();
     }
 } 
