@@ -2,6 +2,12 @@ package com.example.demo.users;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.example.demo.connexions.Connexion;
+import com.example.demo.database.Database;
+import com.example.demo.database.DatabaseRepository;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,6 +16,9 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired 
+    private DatabaseRepository databaseRepository;
 
     // Create a new user
     public User createUser(User user) {
@@ -40,4 +49,27 @@ public class UserService {
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
     }
+    
+    
+    public User addDatabaseToUser( Long userId,Long databaseId) {
+    	User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        Database database = databaseRepository.findById(databaseId).orElseThrow(() -> new RuntimeException("Database not found"));
+        if(!user.getDatabases().contains(database))
+        	user.getDatabases().add(database);
+        return userRepository.save(user);
+    }
+    
+    public List<Connexion> getUserConnexions( Long userId) {
+    	 User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+    	 List<Connexion> connexions = new ArrayList<>();
+    	 for (Database db : user.getDatabases()) {
+    	     if (!connexions.contains(db.getConnexion())) {
+    	         connexions.add(db.getConnexion());
+    	     }
+    	 }
+
+         return connexions;
+    }
+    
+    
 }

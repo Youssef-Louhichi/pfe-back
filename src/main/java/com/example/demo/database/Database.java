@@ -29,12 +29,8 @@ public class Database implements Serializable {
     @JsonIgnoreProperties("databases")
     private Connexion connexion;
     
-    @ManyToMany
-    @JoinTable(
-        name = "db_user",
-        joinColumns = @JoinColumn(name = "db_id"),
-        inverseJoinColumns = @JoinColumn(name = "user_id")
-    )
+    @ManyToMany(mappedBy = "databases")
+	@JsonIgnoreProperties("databases")
     private List<User> users;
 
     private LocalDate createdAt;

@@ -4,12 +4,13 @@ import java.io.Serializable;
 import java.util.List;
 
 import com.example.demo.database.Database;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
@@ -27,8 +28,13 @@ public class User implements Serializable{
 	private String mail;
 	private String password;
 	
-	@ManyToMany(mappedBy = "users")
-	@JsonIgnoreProperties("users")
+	
+	@ManyToMany
+    @JoinTable(
+        name = "db_user",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "db_id")
+    )
     private List<Database> databases;
 	
 	

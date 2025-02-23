@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.example.demo.database.Database;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 
@@ -22,7 +23,6 @@ public class Connexion implements Serializable{
 	private DatabaseType dbtype;
 
 	private String host;
-	private String databaseName;
 	private int port;
 	private String password;
 	private String username;
@@ -30,13 +30,13 @@ public class Connexion implements Serializable{
 	private LocalDate updatedAt;
 
 	@OneToMany(mappedBy = "connexion", cascade = CascadeType.ALL)
+	@JsonIgnore
 	private List<Database> databases;
 
-	public Connexion(DatabaseType dbtype, String host, String databaseName, int port, String password, String username,
+	public Connexion(DatabaseType dbtype, String host, int port, String password, String username,
 			LocalDate createdAt, LocalDate updatedAt, List<Database> databases) {
 		this.dbtype = dbtype;
 		this.host = host;
-		this.databaseName = databaseName;
 		this.port = port;
 		this.password = password;
 		this.username = username;
@@ -69,14 +69,6 @@ public class Connexion implements Serializable{
 
 	public void setHost(String host) {
 		this.host = host;
-	}
-
-	public String getDatabaseName() {
-		return databaseName;
-	}
-
-	public void setDatabaseName(String databaseName) {
-		this.databaseName = databaseName;
 	}
 
 	public int getPort() {

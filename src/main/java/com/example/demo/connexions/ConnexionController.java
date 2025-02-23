@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.database.Database;
+
 
 
 @RestController
@@ -38,6 +40,11 @@ public class ConnexionController {
     @GetMapping("/{id}")
     public Optional<Connexion> getConnexionById(@PathVariable Long id) {
         return connexionService.getConnexionById(id);
+    }
+    
+    @GetMapping("/{id}/databases")
+    public List<Database> getConnexionDatabases(@PathVariable Long id) {
+        return connexionService.getConnexionDatabases(id);
     }
 
     
