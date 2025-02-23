@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.example.demo.database.Database;
+import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.*;
 
@@ -32,9 +34,14 @@ public class Connexion implements Serializable{
 	@OneToMany(mappedBy = "connexion", cascade = CascadeType.ALL)
 	@JsonIgnore
 	private List<Database> databases;
+	
+	@ManyToOne
+	@JoinColumn(name = "creator_id", nullable = false)
+	@JsonIgnoreProperties("databases")
+	private User creator;
 
 	public Connexion(DatabaseType dbtype, String host, int port, String password, String username,
-			LocalDate createdAt, LocalDate updatedAt, List<Database> databases) {
+			LocalDate createdAt, LocalDate updatedAt, List<Database> databases,User creator) {
 		this.dbtype = dbtype;
 		this.host = host;
 		this.port = port;
@@ -43,6 +50,7 @@ public class Connexion implements Serializable{
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 		this.databases = databases;
+		this.creator=creator;
 	}
 
 	public Connexion() {}
@@ -118,4 +126,14 @@ public class Connexion implements Serializable{
 	public void setDatabases(List<Database> databases) {
 		this.databases = databases;
 	}
+
+	public User getCreator() {
+		return creator;
+	}
+
+	public void setCreator(User creator) {
+		this.creator = creator;
+	}
+	
+	
 }

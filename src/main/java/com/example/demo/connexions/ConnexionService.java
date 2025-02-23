@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.database.Database;
 import com.example.demo.database.DatabaseRepository;
+import com.example.demo.users.User;
+import com.example.demo.users.UserRepository;
 
 @Service
 public class ConnexionService {
@@ -24,6 +26,9 @@ public class ConnexionService {
 	
 	@Autowired 
     private DatabaseRepository databaseRepository;
+	
+    @Autowired
+    private UserRepository userRepository;
 	
 	
 	public Connexion createConnexion(Connexion cnx) {
@@ -38,6 +43,7 @@ public class ConnexionService {
 	        throw new RuntimeException("Connection failed! Unable to add connexion.");
 	    }
 	    
+	    cnx.setCreatedAt(LocalDate.now());
 	    Connexion savedConnexion = connexionRepository.save(cnx);
 	    List<Database> databases = fetchDatabases(savedConnexion);
 	    for (Database db : databases) {
@@ -45,6 +51,11 @@ public class ConnexionService {
 	    }
 	    databaseRepository.saveAll(databases);
 	    savedConnexion.setDatabases(databases);
+	    
+	    User creator = userRepository.findById(cnx.getCreator().getIdentif()).get();
+	    creator.getDatabases().addAll(databases);
+	    userRepository.save(creator);
+
 	    return savedConnexion;
 	}
 	
