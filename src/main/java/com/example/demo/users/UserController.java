@@ -1,12 +1,15 @@
 package com.example.demo.users;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.connexions.Connexion;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -58,5 +61,16 @@ public class UserController {
         return ResponseEntity.ok(connexions);
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody User userReq) {
+        User user = userService.loginUser(userReq.getMail(), userReq.getPassword());
+        if (user != null) {
+            Map<String, Object> response = new HashMap<>();
+            response.put("user", user);
+
+            return ResponseEntity.ok(response);
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+    }
     
 }

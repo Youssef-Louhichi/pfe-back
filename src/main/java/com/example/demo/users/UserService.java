@@ -72,4 +72,17 @@ public class UserService {
     }
     
     
+    public User loginUser(String email, String pw) {
+        User u = this.userRepository.findByMail(email);
+        if (u != null) {     
+            if (pw.equals(u.getPassword())) {
+                return u;
+            } else {
+                System.out.println("Password mismatch for user: " + u.getMail());
+            }
+        }
+        return null;
+    }
+    
+    
 }
