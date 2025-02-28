@@ -61,6 +61,12 @@ public class UserController {
         return ResponseEntity.ok(connexions);
     }
 
+    @GetMapping("/getmail")
+    public ResponseEntity<List<User>> getUsersByMail(@RequestParam String mail) {
+        List<User> users = userService.findUsersByMail(mail);
+        return ResponseEntity.ok(users);
+    }
+    
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User userReq) {
         User user = userService.loginUser(userReq.getMail(), userReq.getPassword());

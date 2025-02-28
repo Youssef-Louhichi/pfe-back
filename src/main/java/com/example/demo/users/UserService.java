@@ -71,6 +71,13 @@ public class UserService {
          return connexions;
     }
     
+    public List<User> findUsersByMail(String mail) {
+    	List<User> userFound = new ArrayList<User>();
+    	
+        userFound.add( userRepository.findByMail(mail));
+        return userFound;
+    }
+    
     
     public User loginUser(String email, String pw) {
         User u = this.userRepository.findByMail(email);
