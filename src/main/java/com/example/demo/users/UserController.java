@@ -52,7 +52,10 @@ public class UserController {
     @PostMapping("/{userId}/databases/{databaseId}")
     public ResponseEntity<?> addDatabaseToUser(@PathVariable Long userId, @PathVariable Long databaseId) {
         userService.addDatabaseToUser(userId, databaseId);
-        return ResponseEntity.ok("Database linked successfully");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Database linked successfully");
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{userId}/connexions")
