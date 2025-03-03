@@ -53,4 +53,11 @@ public class DatabaseController {
         List<User> users = databaseService.getUsersByDatabaseId(dbId);
         return ResponseEntity.ok(users);
     }
+    
+    
+    @GetMapping("/tables/{schemaName}")
+    public List<String> getTables(@PathVariable String schemaName) throws Exception {
+        return databaseService.getTables(schemaName);
+    }
+
 }
