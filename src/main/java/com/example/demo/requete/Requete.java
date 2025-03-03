@@ -3,6 +3,7 @@ package com.example.demo.requete;
 import java.io.Serializable;
 import java.time.LocalDate;
 
+import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -30,6 +31,19 @@ public class Requete implements Serializable{
 	@JoinColumn(name = "sender_id", nullable = false)
 	private User sender;
     private String content ;
+    
+    
+    @ManyToOne
+   	@JoinColumn(name = "table_id", nullable = false)
+   	private DbTable tableReq;
+
+	public DbTable getTable() {
+		return tableReq;
+	}
+
+	public void setTable(DbTable table) {
+		this.tableReq = table;
+	}
 
 	public String getContent() {
 		return content;

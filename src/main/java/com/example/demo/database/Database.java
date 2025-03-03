@@ -7,7 +7,9 @@ import java.util.List;
 
 import com.example.demo.connexions.Connexion;
 import com.example.demo.connexions.DatabaseType;
+import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
@@ -35,12 +37,23 @@ public class Database implements Serializable {
 
     private LocalDate createdAt;
     private LocalDate updatedAt;
-
+    
+    @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
+	@JsonIgnore
+	private List<DbTable> tables;
    
     public Database() {
     }
 
-    public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<User> users,
+    public List<DbTable> getTables() {
+		return tables;
+	}
+
+	public void setTables(List<DbTable> tables) {
+		this.tables = tables;
+	}
+
+	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<User> users,
 			LocalDate createdAt, LocalDate updatedAt) {
 		super();
 		this.id = id;

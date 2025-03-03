@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,9 +12,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.database.Database;
+import com.example.demo.tables.DbTable;
 
 
 
@@ -46,6 +49,11 @@ public class ConnexionController {
     public List<Database> getConnexionDatabases(@PathVariable Long id) {
         return connexionService.getConnexionDatabases(id);
     }
+    
+    @GetMapping("/{id}/fetchdatabases")
+    public List<Database> fetchdatabases(@PathVariable Long id) {
+        return connexionService.getConnexionDatabases(id);
+    }
 
     
     @PutMapping("/{id}")
@@ -64,6 +72,14 @@ public class ConnexionController {
         connexionService.testConnection(connexion);
         return "connection status";
     }
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
     
+    @GetMapping("/tables")
+    public List<DbTable> getTables( @RequestParam String connectionUser,
+            @RequestParam DatabaseType dbType)
+    {
+    	return connexionService.fetchTables(jdbcTemplate, connectionUser, dbType);
+    }
  
 }

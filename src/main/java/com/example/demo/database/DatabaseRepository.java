@@ -10,5 +10,9 @@ public interface DatabaseRepository extends JpaRepository<Database,Long>{
 	
 	@Query("SELECT d FROM Database d JOIN FETCH d.users WHERE d.id = :dbId")
     Optional<Database> findByIdWithUsers(@Param("dbId") Long dbId);
+	
+	
+	@Query("SELECT d FROM Database d WHERE d.name = :dbName")
+    Database findByName(@Param("dbName") String dbName);
 
 }
