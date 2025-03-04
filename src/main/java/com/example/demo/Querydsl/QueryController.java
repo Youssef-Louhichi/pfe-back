@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.demo.requete.Requete;
-import com.querydsl.core.Tuple;
+import com.example.demo.dto.QueryRequestDTO;
+
 
 @RestController
 @RequestMapping("/api/query")
@@ -26,16 +26,15 @@ public class QueryController {
     }
 
     @PostMapping("/fetch")
-    public ResponseEntity<List<Map<String, Object>>> fetchTableData(@RequestBody Requete request) {
-    	List<Map<String, Object>> result = dynamicQueryService.fetchTableDataWithCondition(
-        		"jdbc:mysql://localhost:3306/" + request.getTable().getDatabase().getName(),
-                request.getTable().getDatabase().getConnexion().getUsername(),
-                request.getTable().getDatabase().getConnexion().getPassword(),
-                "com.mysql.cj.jdbc.Driver",
-                request.getTable().getName(),
-                request.getTable().getColumns()
+    public ResponseEntity<List<Map<String, Object>>> fetchTableData(@RequestBody QueryRequestDTO request) {
+    	
+    
+    	List<Map<String, Object>> result = dynamicQueryService.fetchTableDataWithCondition(request);
                 
-        );
+
+       
+
         return ResponseEntity.ok(result);
     }
+  
 }

@@ -1,24 +1,31 @@
 package com.example.demo.Querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
+import com.example.demo.TableColumns.ColumnRepository;
+
 import com.example.demo.TableColumns.TabColumn;
+import com.example.demo.dto.QueryRequestDTO;
 import com.example.demo.tables.DbTable;
+import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;
+import com.querydsl.sql.RelationalPath;
 import com.querydsl.sql.RelationalPathBase;
-import com.querydsl.sql.SQLQuery;
-import com.querydsl.core.types.dsl.StringPath;
-import com.querydsl.core.types.dsl.NumberPath;
-import com.querydsl.core.types.dsl.DateTimePath;
 import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Predicate;
+
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,54 +33,81 @@ public class DynamicQueryService {
 
     private final QueryDSLFactory queryDSLFactory;
 
+    
+    @Autowired
+    private ColumnRepository columnRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
+    
+    
+    
     public DynamicQueryService(QueryDSLFactory queryDSLFactory) {
         this.queryDSLFactory = queryDSLFactory;
     }
 
-    public List<Map<String, Object>> fetchTableDataWithCondition(String dbUrl, String username, String password, String driver,
-            String tableName, List<TabColumn> columnNames) {
+
+    
+
+    public List<Map<String, Object>> fetchTableDataWithCondition(QueryRequestDTO request) {
     	
+    	DbTable t = tableRepository.findById(request.getTableId()).get();
     	
-        System.out.println("Initializing database connection...");
-        System.out.println("DB URL: " + dbUrl);
-        System.out.println("Username: " + username);
-        System.out.println("Driver: " + driver);
+    	String dbUrl = "jdbc:mysql://localhost:3306/" + t.getDatabase().getName(); 
+    	String username = t.getDatabase().getConnexion().getUsername();
+    	String password = t.getDatabase().getConnexion().getPassword();
+    	String driver = "com.mysql.cj.jdbc.Driver";
         
         SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
-
-        System.out.println("QueryFactory created successfully.");
-
-        try {
-            SQLQuery<Tuple> query = queryFactory.select(
-                columnNames.stream()
-                    .map(col -> Expressions.path(Object.class , col.getName()))
-                    .toArray(Expression[]::new)
-            ).from(Expressions.path(Object.class, tableName));
-
-            System.out.println("Executing SQL: " + query.toString());
-
-            List<Tuple> result = query.fetch();
-
-            System.out.println("Query executed successfully. Rows fetched: " + result.size());
+             
+        try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
+        	
+        	List<TabColumn> list =  columnRepository.findAllById(request.getColumnId());
+        	
+            List<Expression<?>> columnExpressions = new ArrayList<>();
+            for (TabColumn l : list) {
+                columnExpressions.add(Expressions.stringPath(l.getName()));
+            }
             
-            
-            List<Map<String, Object>> resultList = new ArrayList<>();
-            for (Tuple tuple : result) {
-                Map<String, Object> rowMap = new HashMap<>();
-                for (int i = 0; i < columnNames.size(); i++) {
-                    rowMap.put(columnNames.get(i).getName(), tuple.get(i, null));
-                }
-                resultList.add(rowMap);
+            if (columnExpressions.isEmpty()) {
+                throw new IllegalArgumentException("No columns found for table: " + t.getName());
             }
 
-            return resultList;
+            // Define table reference
+            RelationalPath<?> qTable = new RelationalPathBase<>(Object.class, t.getName(), null, "");
+
+            // Execute Query
+            List<Tuple> result = queryFactory
+                    .select(columnExpressions.toArray(new Expression<?>[0])) 
+                    .from(qTable)
+                    .fetch();
             
+            System.out.println("Query executed successfully. Rows fetched: " + result.size());
+            System.out.println(result.toString());
+            
+            List<Map<String, Object>> jsonResponse = new ArrayList<>();
+            for (Tuple tuple : result) {
+            	
+            	System.out.println(tuple);
+            	
+                Map<String, Object> row = new HashMap<>();
+                for (int i = 0; i < list.size(); i++) {
+                	System.out.println(list.get(i));
+                    row.put(list.get(i).getName(), tuple.get(columnExpressions.get(i)));
+                    
+                }
+                jsonResponse.add(row);
+            }
+
+            return jsonResponse;
+
         } catch (Exception e) {
             System.err.println("Error executing query: " + e.getMessage());
             e.printStackTrace();
             return Collections.emptyList();
         }
     }
+
 
 
     private Predicate buildWhereClause(RelationalPathBase<?> table, Map<String, Object> conditions) {
