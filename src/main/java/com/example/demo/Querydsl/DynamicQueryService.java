@@ -30,10 +30,10 @@ public class DynamicQueryService {
         this.queryDSLFactory = queryDSLFactory;
     }
 
-    public List<Map<String, Object>> fetchTableDataWithCondition(
-            String dbUrl, String username, String password, String driver,
-            String tableName, List<TabColumn> columnNames
-    ) {
+    public List<Map<String, Object>> fetchTableDataWithCondition(String dbUrl, String username, String password, String driver,
+            String tableName, List<TabColumn> columnNames) {
+    	
+    	
         System.out.println("Initializing database connection...");
         System.out.println("DB URL: " + dbUrl);
         System.out.println("Username: " + username);
@@ -57,7 +57,6 @@ public class DynamicQueryService {
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
             
             
-         // Convert result to List<Map<String, Object>> for JSON serialization
             List<Map<String, Object>> resultList = new ArrayList<>();
             for (Tuple tuple : result) {
                 Map<String, Object> rowMap = new HashMap<>();

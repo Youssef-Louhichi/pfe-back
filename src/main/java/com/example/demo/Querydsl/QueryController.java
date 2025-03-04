@@ -32,7 +32,8 @@ public class QueryController {
                 request.getTable().getDatabase().getConnexion().getUsername(),
                 request.getTable().getDatabase().getConnexion().getPassword(),
                 "com.mysql.cj.jdbc.Driver",
-                request.getTable().getName(), request.getTable().getColumns()
+                request.getTable().getName(),
+                request.getTable().getColumns()
                 
         );
         return ResponseEntity.ok(result);
