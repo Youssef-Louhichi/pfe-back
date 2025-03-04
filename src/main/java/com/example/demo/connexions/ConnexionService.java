@@ -108,7 +108,7 @@ public class ConnexionService {
 	    List<DbTable> tables = new ArrayList<>();
 	    
 	    // Fetch schemas for the current connection
-	    List<String> schemas = fetchSchemas2(jdbcTemplate, connectionUser, dbType,"youssef");
+	    List<String> schemas = fetchSchemas2(jdbcTemplate, connectionUser, dbType,"soa");
 	    //List<String> schemas = fetchSchemas(jdbcTemplate, connectionUser, dbType);
 
 	    for (String schema : schemas) {

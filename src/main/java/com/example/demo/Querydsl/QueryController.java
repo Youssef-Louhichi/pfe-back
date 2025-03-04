@@ -1,6 +1,7 @@
 package com.example.demo.Querydsl;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -25,13 +26,13 @@ public class QueryController {
     }
 
     @PostMapping("/fetch")
-    public ResponseEntity<List<Tuple>> fetchTableData(@RequestBody Requete request) {
-        List<Tuple> result = dynamicQueryService.fetchTableDataWithCondition(
-        		"jdbc:mysql://localhost:3306/youssef",
+    public ResponseEntity<List<Map<String, Object>>> fetchTableData(@RequestBody Requete request) {
+    	List<Map<String, Object>> result = dynamicQueryService.fetchTableDataWithCondition(
+        		"jdbc:mysql://localhost:3306/" + request.getTable().getDatabase().getName(),
                 request.getTable().getDatabase().getConnexion().getUsername(),
                 request.getTable().getDatabase().getConnexion().getPassword(),
                 "com.mysql.cj.jdbc.Driver",
-                request.getTable(), null
+                request.getTable().getName(), request.getTable().getColumns()
                 
         );
         return ResponseEntity.ok(result);
