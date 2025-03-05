@@ -2,6 +2,7 @@ package com.example.demo.dto;
 
 import java.util.List;
 
+import com.example.demo.Condition.FilterCondition;
 import com.example.demo.requete.Requete;
 
 public class QueryRequestDTO {
@@ -11,6 +12,15 @@ public class QueryRequestDTO {
 	private Long tableId;
 	private List<Long> columnId;
 	
+	private List<FilterCondition> filters;
+	
+	
+	public List<FilterCondition> getFilters() {
+		return filters;
+	}
+	public void setFilters(List<FilterCondition> filters) {
+		this.filters = filters;
+	}
 	
 	public Requete getReq() {
 		return req;

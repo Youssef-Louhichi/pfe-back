@@ -1,6 +1,7 @@
 package com.example.demo.Querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
+import com.example.demo.Condition.FilterCondition;
 import com.example.demo.TableColumns.ColumnRepository;
 
 import com.example.demo.TableColumns.TabColumn;
@@ -10,6 +11,7 @@ import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;
 import com.querydsl.sql.RelationalPath;
 import com.querydsl.sql.RelationalPathBase;
+import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Predicate;
@@ -77,10 +79,14 @@ public class DynamicQueryService {
             RelationalPath<?> qTable = new RelationalPathBase<>(Object.class, t.getName(), null, "");
 
             // Execute Query
-            List<Tuple> result = queryFactory
-                    .select(columnExpressions.toArray(new Expression<?>[0])) 
-                    .from(qTable)
-                    .fetch();
+            // Start building the query
+            SQLQuery<Tuple> query = queryFactory.select(columnExpressions.toArray(new Expression<?>[0])).from(qTable);
+
+            // Add dynamic WHERE conditions
+            addDynamicFilters(query, request.getFilters());
+
+            // Execute query
+            List<Tuple> result = query.fetch();
             
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
             System.out.println(result.toString());
@@ -108,6 +114,46 @@ public class DynamicQueryService {
         }
     }
 
+    private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters) {
+        if (filters == null || filters.isEmpty()) return;
+
+        for (FilterCondition filter : filters) {
+            String columnName = filter.getColumnName();
+            String operator = filter.getOperator().toLowerCase();
+            String value = filter.getValue();
+
+            Expression<?> column = Expressions.stringPath(columnName);
+
+            switch (operator) {
+                case "=":
+                    query.where(Expressions.booleanTemplate("{0} = {1}", column, value));
+                    break;
+                case "!=":
+                    query.where(Expressions.booleanTemplate("{0} != {1}", column, value));
+                    break;
+                case "like":
+                    query.where(Expressions.booleanTemplate("{0} LIKE {1}", column, "%" + value + "%"));
+                    break;
+                case ">":
+                    query.where(Expressions.booleanTemplate("{0} > {1}", column, value));
+                    break;
+                case "<":
+                    query.where(Expressions.booleanTemplate("{0} < {1}", column, value));
+                    break;
+                case ">=":
+                    query.where(Expressions.booleanTemplate("{0} >= {1}", column, value));
+                    break;
+                case "<=":
+                    query.where(Expressions.booleanTemplate("{0} <= {1}", column, value));
+                    break;
+                case "in":
+                    query.where(Expressions.booleanTemplate("{0} IN ({1})", column, value));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        }
+    }
 
 
     private Predicate buildWhereClause(RelationalPathBase<?> table, Map<String, Object> conditions) {
