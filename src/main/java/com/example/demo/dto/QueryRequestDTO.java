@@ -14,7 +14,16 @@ public class QueryRequestDTO {
 	
 	private List<FilterCondition> filters;
 	
+	private List<Long> groupByColumns;
 	
+	
+	
+	public List<Long> getGroupByColumns() {
+		return groupByColumns;
+	}
+	public void setGroupByColumns(List<Long> groupByColumns) {
+		this.groupByColumns = groupByColumns;
+	}
 	public List<FilterCondition> getFilters() {
 		return filters;
 	}

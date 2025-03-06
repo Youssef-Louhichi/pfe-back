@@ -33,6 +33,7 @@ public class Requete implements Serializable{
     private String content ;
     
     
+    
     @ManyToOne
    	@JoinColumn(name = "table_id", nullable = false)
    	private DbTable tableReq;
