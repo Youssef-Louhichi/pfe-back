@@ -2,6 +2,7 @@ package com.example.demo.dto;
 
 import java.util.List;
 
+import com.example.demo.Condition.AggregationRequest;
 import com.example.demo.Condition.FilterCondition;
 import com.example.demo.requete.Requete;
 
@@ -16,8 +17,15 @@ public class QueryRequestDTO {
 	
 	private List<Long> groupByColumns;
 	
+	 private List<AggregationRequest> aggregations; 
+	 
 	
-	
+	public List<AggregationRequest> getAggregations() {
+		return aggregations;
+	}
+	public void setAggregations(List<AggregationRequest> aggregations) {
+		this.aggregations = aggregations;
+	}
 	public List<Long> getGroupByColumns() {
 		return groupByColumns;
 	}

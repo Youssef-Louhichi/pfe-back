@@ -1,6 +1,7 @@
 package com.example.demo.Querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
+import com.example.demo.Condition.AggregationRequest;
 import com.example.demo.Condition.FilterCondition;
 import com.example.demo.TableColumns.ColumnRepository;
 
@@ -11,6 +12,7 @@ import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;
 import com.querydsl.sql.RelationalPath;
 import com.querydsl.sql.RelationalPathBase;
+import com.querydsl.sql.SQLExpressions;
 import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.Expression;
@@ -52,39 +54,47 @@ public class DynamicQueryService {
     
 
     public List<Map<String, Object>> fetchTableDataWithCondition(QueryRequestDTO request) {
-    	
-    	DbTable t = tableRepository.findById(request.getTableId()).get();
-    	
-    	String dbUrl = "jdbc:mysql://localhost:3306/" + t.getDatabase().getName(); 
-    	String username = t.getDatabase().getConnexion().getUsername();
-    	String password = t.getDatabase().getConnexion().getPassword();
-    	String driver = "com.mysql.cj.jdbc.Driver";
+        
+        DbTable t = tableRepository.findById(request.getTableId()).orElseThrow(() -> new RuntimeException("Table not found"));
+        
+        String dbUrl = "jdbc:mysql://localhost:3306/" + t.getDatabase().getName(); 
+        String username = t.getDatabase().getConnexion().getUsername();
+        String password = t.getDatabase().getConnexion().getPassword();
+        String driver = "com.mysql.cj.jdbc.Driver";
         
         SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
-             
+        
         try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
-        	
-        	List<TabColumn> list =  columnRepository.findAllById(request.getColumnId());
-        	
-            List<Expression<?>> columnExpressions = new ArrayList<>();
-            for (TabColumn l : list) {
-                columnExpressions.add(Expressions.stringPath(l.getName()));
-            }
             
-            if (columnExpressions.isEmpty()) {
+            List<TabColumn> columns = columnRepository.findAllById(request.getColumnId());
+            
+            List<Expression<?>> selectExpressions = new ArrayList<>();
+            Map<String, Expression<?>> aliasMapping = new HashMap<>();
+
+            // Add normal columns to SELECT
+            for (TabColumn column : columns) {
+                Expression<String> colExpr = Expressions.stringPath(column.getName());
+                selectExpressions.add(colExpr);
+                aliasMapping.put(column.getName(), colExpr);
+            }
+
+            // Add aggregate functions
+            addAggregations(request, selectExpressions, aliasMapping);
+
+            if (selectExpressions.isEmpty()) {
                 throw new IllegalArgumentException("No columns found for table: " + t.getName());
             }
 
             // Define table reference
             RelationalPath<?> qTable = new RelationalPathBase<>(Object.class, t.getName(), null, "");
 
-            // Execute Query
-            // Start building the query
-            SQLQuery<Tuple> query = queryFactory.select(columnExpressions.toArray(new Expression<?>[0])).from(qTable);
-          
+            // Build query
+            SQLQuery<Tuple> query = queryFactory.select(selectExpressions.toArray(new Expression<?>[0])).from(qTable);
+
             // Add dynamic WHERE conditions
             addDynamicFilters(query, request.getFilters());
-            
+
+            // Handle GROUP BY if provided
             if (request.getGroupByColumns() != null && !request.getGroupByColumns().isEmpty()) {
                 List<Expression<?>> groupByExpressions = new ArrayList<>();
                 for (Long groupByColumnId : request.getGroupByColumns()) {
@@ -94,9 +104,10 @@ public class DynamicQueryService {
                     }
                 }
                 if (!groupByExpressions.isEmpty()) {
-                    query.groupBy(columnExpressions.toArray(new Expression<?>[0]));
+                    query.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
                 }
             }
+
             // Execute query
             List<Tuple> result = query.fetch();
             
@@ -105,14 +116,10 @@ public class DynamicQueryService {
             
             List<Map<String, Object>> jsonResponse = new ArrayList<>();
             for (Tuple tuple : result) {
-            	
-            	System.out.println(tuple);
-            	
+                
                 Map<String, Object> row = new HashMap<>();
-                for (int i = 0; i < list.size(); i++) {
-                	System.out.println(list.get(i));
-                    row.put(list.get(i).getName(), tuple.get(columnExpressions.get(i)));
-                    
+                for (Map.Entry<String, Expression<?>> entry : aliasMapping.entrySet()) {
+                    row.put(entry.getKey(), tuple.get(entry.getValue()));
                 }
                 jsonResponse.add(row);
             }
@@ -125,6 +132,7 @@ public class DynamicQueryService {
             return Collections.emptyList();
         }
     }
+
 
     private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters) {
         if (filters == null || filters.isEmpty()) return;
@@ -166,6 +174,44 @@ public class DynamicQueryService {
             }
         }
     }
+    private void addAggregations(QueryRequestDTO request, List<Expression<?>> selectExpressions, Map<String, Expression<?>> aliasMapping) {
+        if (request.getAggregations() != null) {
+            for (AggregationRequest agg : request.getAggregations()) {
+                TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+                if (column != null) {
+                    Expression<?> aggregateExpr = null;
+                    String alias = agg.getFunction().toLowerCase() + "_" + column.getName();
+
+                    switch (agg.getFunction().toUpperCase()) {
+                        case "MAX":
+                            aggregateExpr = SQLExpressions.max(Expressions.numberPath(Double.class, column.getName()));
+                            break;
+                        case "MIN":
+                            aggregateExpr = SQLExpressions.min(Expressions.numberPath(Double.class, column.getName()));
+                            break;
+                        case "AVG":
+                            aggregateExpr = SQLExpressions.avg(Expressions.numberPath(Double.class, column.getName()));
+                            break;
+                        case "COUNT":
+                            aggregateExpr = SQLExpressions.count(Expressions.stringPath(column.getName()));
+                            break;
+                        case "SUM":
+                            aggregateExpr = SQLExpressions.sum(Expressions.numberPath(Double.class, column.getName()));
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unsupported aggregation function: " + agg.getFunction());
+                    }
+
+                    if (aggregateExpr != null) {
+                        Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias); // Use Expressions.as()
+                        selectExpressions.add(aliasedExpr);
+                        aliasMapping.put(alias, aliasedExpr); // Store the aliased expression
+                    }
+                }
+            }
+        }
+    }
+
 
 
 
