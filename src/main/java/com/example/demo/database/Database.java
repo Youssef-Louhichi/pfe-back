@@ -39,7 +39,6 @@ public class Database implements Serializable {
     private LocalDate updatedAt;
     
     @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
-	@JsonIgnore
 	private List<DbTable> tables;
    
     public Database() {

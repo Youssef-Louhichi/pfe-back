@@ -6,6 +6,7 @@ public class FilterCondition {
 	private String columnName;
     private String operator;  
     private String value;
+    
 	public String getColumnName() {
 		return columnName;
 	}
