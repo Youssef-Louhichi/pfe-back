@@ -6,6 +6,7 @@ import com.example.demo.Condition.FilterCondition;
 import com.example.demo.TableColumns.ColumnRepository;
 
 import com.example.demo.TableColumns.TabColumn;
+import com.example.demo.connexions.DatabaseType;
 import com.example.demo.dto.QueryRequestDTO;
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
@@ -56,45 +57,50 @@ public class DynamicQueryService {
     public List<Map<String, Object>> fetchTableDataWithCondition(QueryRequestDTO request) {
         
         DbTable t = tableRepository.findById(request.getTableId()).orElseThrow(() -> new RuntimeException("Table not found"));
+
+        DatabaseType dbType = t.getDatabase().getDbtype(); // Assume you have this info in your DB
+        String dbUrl, driver;
         
-        String dbUrl = "jdbc:mysql://localhost:3306/" + t.getDatabase().getName(); 
+        if (dbType  == DatabaseType.MySQL) {
+            dbUrl = "jdbc:mysql://"+t.getDatabase().getConnexion().getHost()+":"+t.getDatabase().getConnexion().getPort()+"/" + t.getDatabase().getName();
+            driver = "com.mysql.cj.jdbc.Driver";
+        } else if (dbType  == DatabaseType.Oracle) {
+            dbUrl = "jdbc:oracle:thin:@" + t.getDatabase().getConnexion().getHost() + ":" + t.getDatabase().getConnexion().getPort() + ":" + t.getDatabase().getName();
+            driver = "oracle.jdbc.OracleDriver";
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+
         String username = t.getDatabase().getConnexion().getUsername();
         String password = t.getDatabase().getConnexion().getPassword();
-        String driver = "com.mysql.cj.jdbc.Driver";
         
         SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
-        
+
         try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
-            
+
             List<TabColumn> columns = columnRepository.findAllById(request.getColumnId());
-            
             List<Expression<?>> selectExpressions = new ArrayList<>();
             Map<String, Expression<?>> aliasMapping = new HashMap<>();
 
-            // Add normal columns to SELECT
             for (TabColumn column : columns) {
                 Expression<String> colExpr = Expressions.stringPath(column.getName());
                 selectExpressions.add(colExpr);
                 aliasMapping.put(column.getName(), colExpr);
             }
 
-            // Add aggregate functions
             addAggregations(request, selectExpressions, aliasMapping);
 
             if (selectExpressions.isEmpty()) {
                 throw new IllegalArgumentException("No columns found for table: " + t.getName());
             }
 
-            // Define table reference
-            RelationalPath<?> qTable = new RelationalPathBase<>(Object.class, t.getName(), null, "");
+            
+            String tableName = t.getName();
+            RelationalPath<?> qTable = new RelationalPathBase<>(Object.class, tableName, null, "");
 
-            // Build query
             SQLQuery<Tuple> query = queryFactory.select(selectExpressions.toArray(new Expression<?>[0])).from(qTable);
-
-            // Add dynamic WHERE conditions
             addDynamicFilters(query, request.getFilters());
 
-            // Handle GROUP BY if provided
             if (request.getGroupByColumns() != null && !request.getGroupByColumns().isEmpty()) {
                 List<Expression<?>> groupByExpressions = new ArrayList<>();
                 for (Long groupByColumnId : request.getGroupByColumns()) {
@@ -108,15 +114,11 @@ public class DynamicQueryService {
                 }
             }
 
-            // Execute query
             List<Tuple> result = query.fetch();
-            
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
-            System.out.println(result.toString());
-            
+
             List<Map<String, Object>> jsonResponse = new ArrayList<>();
             for (Tuple tuple : result) {
-                
                 Map<String, Object> row = new HashMap<>();
                 for (Map.Entry<String, Expression<?>> entry : aliasMapping.entrySet()) {
                     row.put(entry.getKey(), tuple.get(entry.getValue()));
@@ -132,6 +134,7 @@ public class DynamicQueryService {
             return Collections.emptyList();
         }
     }
+
 
 
     private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters) {
