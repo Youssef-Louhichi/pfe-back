@@ -135,9 +135,13 @@ public class DynamicQueryService {
 
 
     private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters) {
-        if (filters == null || filters.isEmpty()) return;
+    	if (filters == null || filters.isEmpty()) {
+            System.out.println("No filters applied.");
+            return;
+        }
 
         for (FilterCondition filter : filters) {
+        	 System.out.println("Filter received -> Column: " + filter.getColumnName() + ", Operator: " + filter.getOperator() + ", Value: " + filter.getValue());
             String columnName = filter.getColumnName();
             String operator = filter.getOperator().toLowerCase();
             String value = filter.getValue();
