@@ -6,7 +6,15 @@ public class FilterCondition {
 	private String columnName;
     private String operator;  
     private String value;
+    private String tableName;
     
+    
+	public String getTableName() {
+		return tableName;
+	}
+	public void setTableName(String tableName) {
+		this.tableName = tableName;
+	}
 	public String getColumnName() {
 		return columnName;
 	}

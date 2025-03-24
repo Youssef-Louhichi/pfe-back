@@ -2,11 +2,14 @@ package com.example.demo.requete;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.List;
 
+import com.example.demo.Condition.JoinCondition;
 import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,6 +34,9 @@ public class Requete implements Serializable{
 	@JoinColumn(name = "sender_id", nullable = false)
 	private User sender;
     private String content ;
+    @ElementCollection
+    private List<JoinCondition> joinConditions;
+    
     
     
     
@@ -77,6 +83,15 @@ public class Requete implements Serializable{
 	public void setSender(User sender) {
 		this.sender = sender;
 	}
+	
+	public List<JoinCondition> getJoinConditions() {
+        return joinConditions;
+    }
+    
+    public void setJoinConditions(List<JoinCondition> joinConditions) {
+        this.joinConditions = joinConditions;
+    }
+    
 
 	public Requete(LocalDate sentAt, User sender,String content) {
 		
