@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.example.demo.Rapport.Rapport;
 import com.example.demo.database.Database;
 import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -39,6 +40,11 @@ public class Connexion implements Serializable{
 	@JoinColumn(name = "creator_id", nullable = false)
 	@JsonIgnoreProperties("databases")
 	private User creator;
+	
+	
+	
+	@OneToMany(mappedBy = "cnxrapport", cascade = CascadeType.ALL)
+   	private List<Rapport> rapports;
 
 	public Connexion(DatabaseType dbtype, String host, int port, String password, String username,
 			LocalDate createdAt, LocalDate updatedAt, List<Database> databases,User creator) {

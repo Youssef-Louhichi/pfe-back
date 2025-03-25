@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.example.demo.Rapport.Rapport;
 import com.example.demo.connexions.Connexion;
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.tables.DbTable;
@@ -40,11 +41,17 @@ public class Database implements Serializable {
     
     @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
 	private List<DbTable> tables;
+    
+    
+    
    
     public Database() {
     }
 
-    public List<DbTable> getTables() {
+    
+
+
+	public List<DbTable> getTables() {
 		return tables;
 	}
 
@@ -54,7 +61,7 @@ public class Database implements Serializable {
 
 	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<User> users,
 			LocalDate createdAt, LocalDate updatedAt) {
-		super();
+		
 		this.id = id;
 		this.name = name;
 		this.dbtype = dbtype;

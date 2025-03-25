@@ -17,8 +17,6 @@ public class RequeteService {
 	private RequeteRepository requeterepository;
 	
 	
-	
-	
     public Requete createReq(Requete requete) {
         return requeterepository.save(requete);
     }

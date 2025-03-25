@@ -3,8 +3,11 @@ package com.example.demo.users;
 import java.io.Serializable;
 import java.util.List;
 
+import com.example.demo.Rapport.Rapport;
 import com.example.demo.database.Database;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,6 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -38,6 +42,22 @@ public class User implements Serializable{
     private List<Database> databases;
 	
 	
+	
+	@OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
+	@JsonIgnore
+   	private List<Rapport> rapports;
+	
+	
+	
+	
+	public List<Rapport> getRapports() {
+		return rapports;
+	}
+
+	public void setRapports(List<Rapport> rapports) {
+		this.rapports = rapports;
+	}
+
 	public Long getIdentif() {
 	    return identif;
 	}
