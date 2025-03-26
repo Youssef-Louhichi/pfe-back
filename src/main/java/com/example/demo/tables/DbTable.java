@@ -7,7 +7,6 @@ import java.util.List;
 import com.example.demo.TableColumns.TabColumn;
 import com.example.demo.database.Database;
 import com.example.demo.requete.Requete;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;

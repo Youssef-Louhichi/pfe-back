@@ -7,7 +7,7 @@ import java.util.List;
 import com.example.demo.Condition.JoinCondition;
 import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;

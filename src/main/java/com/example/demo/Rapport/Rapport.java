@@ -7,8 +7,7 @@ import com.example.demo.connexions.Connexion;
 
 import com.example.demo.graph.Graph;
 import com.example.demo.users.User;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -32,8 +31,7 @@ public class Rapport implements Serializable{
 	
 	private String titre;
 	
-	@OneToMany(mappedBy = "rapport", cascade = CascadeType.ALL)
-	@JsonIgnore
+	@OneToMany(mappedBy = "rapport", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Graph> graphs;
 	
 	@ManyToOne
@@ -43,7 +41,8 @@ public class Rapport implements Serializable{
 	
 	@ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
-    private User sender;
+	@JsonIgnoreProperties("databases")
+    private User user;
 	
 	
 	
@@ -57,12 +56,12 @@ public class Rapport implements Serializable{
 		this.cnxrapport = cnxrapport;
 	}
 
-	public User getSender() {
-		return sender;
+	public User getUser() {
+		return user;
 	}
 
-	public void setSender(User sender) {
-		this.sender = sender;
+	public void setUser(User user) {
+		this.user = user;
 	}
 
 	
@@ -89,6 +88,9 @@ public class Rapport implements Serializable{
 
 	public void setGraphs(List<Graph> graphs) {
 		this.graphs = graphs;
+		for (Graph item : graphs) {
+            item.setRapport(this); 
+        }
 	}
 
 	public Rapport(String titre, List<Graph> graphs) {

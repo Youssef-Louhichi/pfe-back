@@ -19,7 +19,6 @@ import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.Expression;
-import com.querydsl.core.types.Ops;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

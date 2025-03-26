@@ -5,12 +5,11 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.example.demo.Rapport.Rapport;
+
 import com.example.demo.connexions.Connexion;
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity

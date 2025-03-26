@@ -43,7 +43,7 @@ public class User implements Serializable{
 	
 	
 	
-	@OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
 	@JsonIgnore
    	private List<Rapport> rapports;
 	

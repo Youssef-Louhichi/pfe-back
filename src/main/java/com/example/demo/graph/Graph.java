@@ -2,16 +2,19 @@ package com.example.demo.graph;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 import com.example.demo.Rapport.Rapport;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -31,7 +34,8 @@ private static final long serialVersionUID = 1L;
     private List<String> colors ;
     private String columnX ;
     private String columnY ;
-    private List<Object> data;
+    @Lob
+    private String data; 
     private String format ;
     private List<String> headers ;
     private int height;
@@ -44,7 +48,7 @@ private static final long serialVersionUID = 1L;
     
     @ManyToOne
     @JoinColumn(name = "rapport_id", nullable = false)
-    @JsonIgnore
+    @JsonIgnoreProperties("graphs")
     private Rapport rapport;
     
 	public Long getId() {
@@ -76,12 +80,6 @@ private static final long serialVersionUID = 1L;
 	}
 	public void setColumnY(String columnY) {
 		this.columnY = columnY;
-	}
-	public List<Object> getData() {
-		return data;
-	}
-	public void setData(List<Object> data) {
-		this.data = data;
 	}
 	public String getFormat() {
 		return format;
@@ -130,9 +128,29 @@ private static final long serialVersionUID = 1L;
 		this.rapport = rapport;
 	}
 	
+	public void setData(Object data) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            this.data = objectMapper.writeValueAsString(data);  
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    
+    public List<Map<String, Object>> getData() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            return objectMapper.readValue(this.data, objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 	
 	
-	public Graph(Long id, String chartType, List<String> colors, String columnX, String columnY, List<Object> data,
+	
+	public Graph(Long id, String chartType, List<String> colors, String columnX, String columnY, String data,
 			String format, List<String> headers, int height, int width, int left, int top) {
 		
 		this.id = id;

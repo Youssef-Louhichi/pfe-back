@@ -2,7 +2,7 @@ package com.example.demo.TableColumns;
 
 import java.io.Serializable;
 
-import com.example.demo.database.Database;
+
 import com.example.demo.tables.DbTable;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
