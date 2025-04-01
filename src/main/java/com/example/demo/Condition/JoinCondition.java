@@ -1,4 +1,4 @@
-package com.example.demo.Condition;
+package com.example.demo.condition;
 
 import jakarta.persistence.Embeddable;
 

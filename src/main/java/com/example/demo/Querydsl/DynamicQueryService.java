@@ -1,14 +1,13 @@
-package com.example.demo.Querydsl;
+package com.example.demo.querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
-import com.example.demo.Condition.AggregationRequest;
-import com.example.demo.Condition.FilterCondition;
-import com.example.demo.Condition.JoinCondition;
-import com.example.demo.TableColumns.ColumnRepository;
-
-import com.example.demo.TableColumns.TabColumn;
+import com.example.demo.condition.AggregationRequest;
+import com.example.demo.condition.FilterCondition;
+import com.example.demo.condition.JoinCondition;
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.dto.QueryRequestDTO;
+import com.example.demo.tablecolumns.ColumnRepository;
+import com.example.demo.tablecolumns.TabColumn;
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;

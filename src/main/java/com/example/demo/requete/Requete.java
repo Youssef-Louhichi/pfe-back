@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.example.demo.Condition.JoinCondition;
+import com.example.demo.condition.JoinCondition;
 import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
 

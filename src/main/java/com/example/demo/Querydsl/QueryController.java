@@ -1,4 +1,4 @@
-package com.example.demo.Querydsl;
+package com.example.demo.querydsl;
 
 import java.util.List;
 import java.util.Map;

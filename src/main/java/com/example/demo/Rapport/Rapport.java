@@ -1,4 +1,4 @@
-package com.example.demo.Rapport;
+package com.example.demo.rapport;
 
 import java.io.Serializable;
 import java.util.List;

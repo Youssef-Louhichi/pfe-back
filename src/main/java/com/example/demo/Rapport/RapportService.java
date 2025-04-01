@@ -1,4 +1,4 @@
-package com.example.demo.Rapport;
+package com.example.demo.rapport;
 
 import java.util.List;
 import java.util.Optional;

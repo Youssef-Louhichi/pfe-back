@@ -1,4 +1,4 @@
-package com.example.demo.Querydsl;
+package com.example.demo.querydsl;
 import com.querydsl.sql.Configuration;
 import com.querydsl.sql.SQLQueryFactory;
 import com.querydsl.sql.SQLTemplates;

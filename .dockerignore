@@ -1,0 +1,6 @@
+*.jar
+*.war
+*.iml
+.mvn/
+.idea/
+.git/
