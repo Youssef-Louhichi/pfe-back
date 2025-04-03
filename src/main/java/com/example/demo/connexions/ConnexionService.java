@@ -13,10 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.TableColumns.ColumnRepository;
-import com.example.demo.TableColumns.TabColumn;
 import com.example.demo.database.Database;
 import com.example.demo.database.DatabaseRepository;
+import com.example.demo.tablecolumns.ColumnRepository;
+import com.example.demo.tablecolumns.TabColumn;
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
 import com.example.demo.users.User;

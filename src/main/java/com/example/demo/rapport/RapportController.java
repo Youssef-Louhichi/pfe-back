@@ -1,4 +1,4 @@
-package com.example.demo.Rapport;
+package com.example.demo.rapport;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

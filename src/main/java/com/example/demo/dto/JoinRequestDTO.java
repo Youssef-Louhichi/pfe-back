@@ -2,7 +2,7 @@ package com.example.demo.dto;
 
 import java.util.List;
 
-import com.example.demo.Condition.JoinCondition;
+import com.example.demo.condition.JoinCondition;
 
 public class JoinRequestDTO {
 	 private List<JoinCondition> joinConditions;

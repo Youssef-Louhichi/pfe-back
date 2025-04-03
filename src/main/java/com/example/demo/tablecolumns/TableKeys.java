@@ -1,4 +1,4 @@
-package com.example.demo.TableColumns;
+package com.example.demo.tablecolumns;
 
 import java.io.Serializable;
 

@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.example.demo.Rapport.Rapport;
 import com.example.demo.database.Database;
+import com.example.demo.rapport.Rapport;
 import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
