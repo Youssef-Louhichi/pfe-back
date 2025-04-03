@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.example.demo.creator.Creator;
 import com.example.demo.database.Database;
 import com.example.demo.rapport.Rapport;
 import com.example.demo.users.User;
@@ -33,21 +34,27 @@ public class Connexion implements Serializable{
 	private LocalDate updatedAt;
 
 	@OneToMany(mappedBy = "connexion", cascade = CascadeType.ALL)
-	@JsonIgnore
+	@JsonIgnoreProperties("connexion")
 	private List<Database> databases;
 	
 	@ManyToOne
 	@JoinColumn(name = "creator_id", nullable = false)
-	@JsonIgnoreProperties("databases")
-	private User creator;
+	@JsonIgnoreProperties("connexions")
+	private Creator creator;
 	
 	
 	
 	@OneToMany(mappedBy = "cnxrapport", cascade = CascadeType.ALL)
+	@JsonIgnore
    	private List<Rapport> rapports;
 
-	public Connexion(DatabaseType dbtype, String host, int port, String password, String username,
-			LocalDate createdAt, LocalDate updatedAt, List<Database> databases,User creator) {
+	
+
+	public Connexion(Long id, DatabaseType dbtype, String host, int port, String password, String username,
+			LocalDate createdAt, LocalDate updatedAt, List<Database> databases, Creator creator,
+			List<Rapport> rapports) {
+		super();
+		this.id = id;
 		this.dbtype = dbtype;
 		this.host = host;
 		this.port = port;
@@ -56,7 +63,8 @@ public class Connexion implements Serializable{
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 		this.databases = databases;
-		this.creator=creator;
+		this.creator = creator;
+		this.rapports = rapports;
 	}
 
 	public Connexion() {}
@@ -133,13 +141,23 @@ public class Connexion implements Serializable{
 		this.databases = databases;
 	}
 
-	public User getCreator() {
+	public Creator getCreator() {
 		return creator;
 	}
 
-	public void setCreator(User creator) {
+	public void setCreator(Creator creator) {
 		this.creator = creator;
 	}
+
+	public List<Rapport> getRapports() {
+		return rapports;
+	}
+
+	public void setRapports(List<Rapport> rapports) {
+		this.rapports = rapports;
+	}
+	
+	
 	
 	
 }

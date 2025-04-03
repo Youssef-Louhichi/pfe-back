@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.connexions.Connexion;
+import com.example.demo.rapport.Rapport;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,10 +21,7 @@ public class UserController {
     private UserService userService;
 
     
-    @PostMapping
-    public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
-    }
+   
 
     
     @GetMapping
@@ -49,25 +47,17 @@ public class UserController {
         userService.deleteUser(id);
     }
     
-    @PostMapping("/{userId}/databases/{databaseId}")
-    public ResponseEntity<?> addDatabaseToUser(@PathVariable Long userId, @PathVariable Long databaseId) {
-        userService.addDatabaseToUser(userId, databaseId);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Database linked successfully");
-
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/{userId}/connexions")
-    public ResponseEntity<List<Connexion>> getUserConnexions(@PathVariable Long userId) {
-    	List<Connexion> connexions = userService.getUserConnexions(userId);
-        return ResponseEntity.ok(connexions);
-    }
+    
 
     @GetMapping("/getmail")
     public ResponseEntity<List<User>> getUsersByMail(@RequestParam String mail) {
         List<User> users = userService.findUsersByMail(mail);
         return ResponseEntity.ok(users);
+    }
+    
+    @GetMapping("/{id}/rapports")
+    public List<Rapport> getUserRapports(@PathVariable Long id) {
+        return userService.getUserRapports(id);
     }
     
     @PostMapping("/login")

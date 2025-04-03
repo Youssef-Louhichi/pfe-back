@@ -5,11 +5,10 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
-
+import com.example.demo.analyst.Analyst;
 import com.example.demo.connexions.Connexion;
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.tables.DbTable;
-import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
@@ -33,7 +32,7 @@ public class Database implements Serializable {
     
     @ManyToMany(mappedBy = "databases")
 	@JsonIgnoreProperties("databases")
-    private List<User> users;
+    private List<Analyst> analysts;
 
     private LocalDate createdAt;
     private LocalDate updatedAt;
@@ -58,14 +57,14 @@ public class Database implements Serializable {
 		this.tables = tables;
 	}
 
-	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<User> users,
+	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<Analyst> analysts,
 			LocalDate createdAt, LocalDate updatedAt) {
 		
 		this.id = id;
 		this.name = name;
 		this.dbtype = dbtype;
 		this.connexion = connexion;
-		this.users = users;
+		this.analysts = analysts;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 	}
@@ -76,12 +75,12 @@ public class Database implements Serializable {
 
 
 
-	public List<User> getUsers() {
-		return users;
+	public List<Analyst> getAnalysts() {
+		return analysts;
 	}
 
-	public void setUsers(List<User> users) {
-		this.users = users;
+	public void setAnalysts(List<Analyst> analysts) {
+		this.analysts = analysts;
 	}
 
 	public Long getId() {

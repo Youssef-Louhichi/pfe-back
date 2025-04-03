@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.analyst.Analyst;
 import com.example.demo.users.User;
 
 @RestController
@@ -49,8 +50,8 @@ public class DatabaseController {
     }
     
     @GetMapping("/{dbId}/users")
-    public ResponseEntity<List<User>> getUsersByDatabaseId(@PathVariable Long dbId) {
-        List<User> users = databaseService.getUsersByDatabaseId(dbId);
+    public ResponseEntity<List<Analyst>> getUsersByDatabaseId(@PathVariable Long dbId) {
+        List<Analyst> users = databaseService.getUsersByDatabaseId(dbId);
         return ResponseEntity.ok(users);
     }
     

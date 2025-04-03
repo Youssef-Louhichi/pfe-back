@@ -37,31 +37,7 @@ public class RapportController {
     }
 
     
-    @PutMapping("/{id}")
-    public ResponseEntity<Rapport> updateRapport(
-            @PathVariable Long id, 
-            @RequestBody Rapport rapportDetails) {
-        try {
-            Rapport updatedRapport = rapportService.updateRapport(id, rapportDetails);
-            return new ResponseEntity<>(updatedRapport, HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
     
-    @PatchMapping("/{id}")
-    public ResponseEntity<Rapport> partialUpdateRapport(
-            @PathVariable Long id, 
-            @RequestBody Rapport rapportDetails) {
-        try {
-            Rapport updatedRapport = rapportService.updateRapport(id, rapportDetails);
-            return new ResponseEntity<>(updatedRapport, HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
     
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRapport(@PathVariable Long id) {

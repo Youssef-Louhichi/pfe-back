@@ -3,6 +3,7 @@ package com.example.demo.users;
 import java.io.Serializable;
 import java.util.List;
 
+import com.example.demo.creator.Creator;
 import com.example.demo.database.Database;
 import com.example.demo.rapport.Rapport;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -20,7 +21,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name="users")
-public class User implements Serializable{
+public  class User implements Serializable{
 	
 	/**
 	 * 
@@ -32,15 +33,9 @@ public class User implements Serializable{
 	private String mail;
 	private String password;
 	
-	
-	@ManyToMany
-    @JoinTable(
-        name = "db_user",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "db_id")
-    )
-    private List<Database> databases;
-	
+	private String type;
+
+    
 	
 	
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
@@ -48,7 +43,9 @@ public class User implements Serializable{
    	private List<Rapport> rapports;
 	
 	
-	
+	public String getType() {
+        return this instanceof Creator ? "Creator" : "Analyst";
+    }
 	
 	public List<Rapport> getRapports() {
 		return rapports;
@@ -79,19 +76,12 @@ public class User implements Serializable{
 		this.password = password;
 	}
 	
-	public List<Database> getDatabases() {
-		return databases;
-	}
+	
 
-	public void setDatabases(List<Database> databases) {
-		this.databases = databases;
-	}
-
-	public User(String mail, String password, String role,List<Database> databases) {
+	public User(String mail, String password, String role) {
 		
 		this.mail = mail;
 		this.password = password;
-		this.databases=databases;
 		
 	}
 	public User() {

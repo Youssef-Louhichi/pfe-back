@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface DatabaseRepository extends JpaRepository<Database,Long>{
 	
-	@Query("SELECT d FROM Database d JOIN FETCH d.users WHERE d.id = :dbId")
+	@Query("SELECT d FROM Database d JOIN FETCH d.analysts WHERE d.id = :dbId")
     Optional<Database> findByIdWithUsers(@Param("dbId") Long dbId);
 	
 	

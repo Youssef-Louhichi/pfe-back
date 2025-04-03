@@ -1,5 +1,6 @@
 package com.example.demo.rapport;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,20 +31,14 @@ public class RapportService {
 	    }
 
 	    public Rapport saveRapport(Rapport rapport) {
+	    	if(rapport.getCreatedAt() == null)
+	    		rapport.setCreatedAt(LocalDate.now());
+	    	else
+	    		rapport.setUpdatedAt(LocalDate.now());
 	        return RapportRepository.save(rapport);
 	    }
 
-	    public Rapport updateRapport(Long id, Rapport updatedRapport) {
-	        return RapportRepository.findById(id)
-	                .map(Rapport -> {
-	                    Rapport.setTitre(updatedRapport.getTitre());
-	                    Rapport.setGraphs(updatedRapport.getGraphs());
-	                    Rapport.setUser(updatedRapport.getUser());
-	                    Rapport.setCnxrapport(updatedRapport.getCnxrapport());
-	                    
-	                    return RapportRepository.save(Rapport);
-	                }).orElse(null);
-	    }
+	    
 
 	    public void deleteRapport(Long id) {
 	        RapportRepository.deleteById(id);

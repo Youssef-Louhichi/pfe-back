@@ -1,13 +1,29 @@
 package com.example.demo.querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
+<<<<<<< HEAD
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
+=======
+import com.querydsl.sql.dml.SQLInsertClause;
+import com.querydsl.sql.dml.SQLUpdateClause;
+import com.example.demo.Condition.AggregationRequest;
+import com.example.demo.Condition.FilterCondition;
+import com.example.demo.Condition.JoinCondition;
+import com.example.demo.TableColumns.ColumnRepository;
+
+import com.example.demo.TableColumns.TabColumn;
+>>>>>>> c8afa318e486484683bf76c1889103bd95cf04a1
 import com.example.demo.connexions.DatabaseType;
+import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
+<<<<<<< HEAD
 import com.example.demo.tablecolumns.ColumnRepository;
 import com.example.demo.tablecolumns.TabColumn;
+=======
+import com.example.demo.dto.UpdateRequestDTO;
+>>>>>>> c8afa318e486484683bf76c1889103bd95cf04a1
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;
@@ -389,4 +405,232 @@ if (aggregateExpr != null) {
 }
 }
 }
+    
+    
+    
+    public Long insertTableData(InsertRequestDTO request) {
+        // Validate request
+        if (request.getTableId() == null) {
+            throw new IllegalArgumentException("Table ID must be provided");
+        }
+        
+        if (request.getColumnValues() == null || request.getColumnValues().isEmpty()) {
+            throw new IllegalArgumentException("Column values must be provided");
+        }
+        
+        // Get table
+        DbTable table = tableRepository.findById(request.getTableId())
+                .orElseThrow(() -> new RuntimeException("Table not found with ID: " + request.getTableId()));
+        
+        // Get database connection details
+        DatabaseType dbType = table.getDatabase().getDbtype();
+        String dbUrl, driver;
+        
+        if (dbType == DatabaseType.MySQL) {
+            dbUrl = "jdbc:mysql://" + table.getDatabase().getConnexion().getHost() + ":" 
+                  + table.getDatabase().getConnexion().getPort() + "/" 
+                  + table.getDatabase().getName();
+            driver = "com.mysql.cj.jdbc.Driver";
+        } else if (dbType == DatabaseType.Oracle) {
+            dbUrl = "jdbc:oracle:thin:@" + table.getDatabase().getConnexion().getHost() + ":" 
+                  + table.getDatabase().getConnexion().getPort() + ":" 
+                  + table.getDatabase().getName();
+            driver = "oracle.jdbc.OracleDriver";
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+
+        String username = table.getDatabase().getConnexion().getUsername();
+        String password = table.getDatabase().getConnexion().getPassword();
+        
+        SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
+            // Create path object for the table
+            RelationalPathBase<?> path = new RelationalPathBase<>(
+                Object.class, 
+                table.getName(),  
+                table.getName(), 
+                table.getName()             
+            );
+            
+            // Build insert query
+            SQLInsertClause insert = queryFactory.insert(path);
+            
+            // Add column values
+            for (Map.Entry<String, Object> entry : request.getColumnValues().entrySet()) {
+                String columnName = entry.getKey();
+                Object value = entry.getValue();
+                
+                // Use Expressions to set values
+                insert.set(Expressions.path(Object.class, path, columnName), value);
+            }
+            
+            // Execute insert
+            System.out.println("Executing insert: " + insert.toString());
+            long result = insert.execute();
+            System.out.println("Insert completed. Rows affected: " + result);
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("Error executing insert: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to insert data: " + e.getMessage(), e);
+        }
+    }
+    
+    
+    
+    public Long updateTableData(UpdateRequestDTO request) {
+        // Validate request
+        if (request.getTableId() == null) {
+            throw new IllegalArgumentException("Table ID must be provided");
+        }
+
+        if (request.getColumnValues() == null || request.getColumnValues().isEmpty()) {
+            throw new IllegalArgumentException("Column values must be provided");
+        }
+
+        if (request.getFilters() == null || request.getFilters().isEmpty()) {
+            throw new IllegalArgumentException("At least one filter condition must be provided for update");
+        }
+
+        // Get table
+        DbTable table = tableRepository.findById(request.getTableId())
+            .orElseThrow(() -> new RuntimeException("Table not found with ID: " + request.getTableId()));
+
+        // Get database connection details
+        DatabaseType dbType = table.getDatabase().getDbtype();
+        String dbUrl, driver;
+
+        if (dbType == DatabaseType.MySQL) {
+            dbUrl = "jdbc:mysql://" + table.getDatabase().getConnexion().getHost() + ":"
+                + table.getDatabase().getConnexion().getPort() + "/"
+                + table.getDatabase().getName();
+            driver = "com.mysql.cj.jdbc.Driver";
+        } else if (dbType == DatabaseType.Oracle) {
+            dbUrl = "jdbc:oracle:thin:@" + table.getDatabase().getConnexion().getHost() + ":"
+                + table.getDatabase().getConnexion().getPort() + ":"
+                + table.getDatabase().getName();
+            driver = "oracle.jdbc.OracleDriver";
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+
+        String username = table.getDatabase().getConnexion().getUsername();
+        String password = table.getDatabase().getConnexion().getPassword();
+
+        SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
+            // Create path object for the table
+            RelationalPathBase<?> path = new RelationalPathBase<>(
+                Object.class,
+                table.getName(),
+                table.getName(),
+                table.getName()
+            );
+
+            // Build update query
+            SQLUpdateClause update = queryFactory.update(path);
+
+            // Add column values to update
+            for (Map.Entry<String, Object> entry : request.getColumnValues().entrySet()) {
+                String columnName = entry.getKey();
+                Object value = entry.getValue();
+
+                // Use Expressions to set values
+                update.set(Expressions.path(Object.class, path, columnName), value);
+            }
+
+            // Add where conditions from filters
+            applyFiltersToUpdate(update, request.getFilters(), Collections.singletonList(table));
+
+            // Execute update
+            System.out.println("Executing update: " + update.toString());
+            long result = update.execute();
+            System.out.println("Update completed. Rows affected: " + result);
+
+            return result;
+        } catch (Exception e) {
+            System.err.println("Error executing update: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to update data: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Applies filter conditions to an update clause
+     */
+    private void applyFiltersToUpdate(SQLUpdateClause update, List<FilterCondition> filters, List<DbTable> tables) {
+        if (filters == null || filters.isEmpty()) {
+            System.out.println("No filters applied to update.");
+            return;
+        }
+
+        Map<String, DbTable> tableNameMap = tables.stream()
+            .collect(Collectors.toMap(DbTable::getName, t -> t));
+
+        for (FilterCondition filter : filters) {
+            System.out.println("Filter applied to update -> Column: " + filter.getColumnName() +
+                              ", Operator: " + filter.getOperator() +
+                              ", Value: " + filter.getValue());
+
+            // Handle qualified column names (table.column format)
+            String columnName = filter.getColumnName();
+            String tableName = null;
+
+            if (columnName.contains(".")) {
+                String[] parts = columnName.split("\\.", 2);
+                tableName = parts[0];
+                columnName = parts[1];
+            } else if (filter.getTableName() != null) {
+                // Use tableName from filter if provided
+                tableName = filter.getTableName();
+            } else if (tables.size() == 1) {
+                // If only one table, use that
+                tableName = tables.get(0).getName();
+            } else {
+                // Cannot determine which table the column belongs to
+                throw new IllegalArgumentException("Column name must be qualified with table name when multiple tables are used: " + columnName);
+            }
+
+            String operator = filter.getOperator().toLowerCase();
+            String value = filter.getValue();
+            
+            Expression<?> column = Expressions.template(Object.class, "{0}.{1}",
+                Expressions.template(Object.class, tableName),
+                Expressions.template(Object.class, columnName)
+            );
+
+            switch (operator) {
+                case "=":
+                    update.where(Expressions.booleanTemplate("{0} = {1}", column, value));
+                    break;
+                case "!=":
+                    update.where(Expressions.booleanTemplate("{0} != {1}", column, value));
+                    break;
+                case "like":
+                    update.where(Expressions.booleanTemplate("{0} LIKE {1}", column, "%" + value + "%"));
+                    break;
+                case ">":
+                    update.where(Expressions.booleanTemplate("{0} > {1}", column, value));
+                    break;
+                case "<":
+                    update.where(Expressions.booleanTemplate("{0} < {1}", column, value));
+                    break;
+                case ">=":
+                    update.where(Expressions.booleanTemplate("{0} >= {1}", column, value));
+                    break;
+                case "<=":
+                    update.where(Expressions.booleanTemplate("{0} <= {1}", column, value));
+                    break;
+                case "in":
+                    update.where(Expressions.booleanTemplate("{0} IN ({1})", column, value));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        }
+    }
 }

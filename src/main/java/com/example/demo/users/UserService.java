@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.example.demo.connexions.Connexion;
 import com.example.demo.database.Database;
 import com.example.demo.database.DatabaseRepository;
+import com.example.demo.rapport.Rapport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +18,7 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
     
-    @Autowired 
-    private DatabaseRepository databaseRepository;
-
-    // Create a new user
-    public User createUser(User user) {
-        return userRepository.save(user);
-    }
+   
 
     // Get all users
     public List<User> getAllUsers() {
@@ -40,7 +35,6 @@ public class UserService {
         return userRepository.findById(id).map(user -> {
             user.setMail(updatedUser.getMail());
             user.setPassword(updatedUser.getPassword());
-            user.setDatabases(updatedUser.getDatabases());
             return userRepository.save(user);
         }).orElse(null);
     }
@@ -51,25 +45,7 @@ public class UserService {
     }
     
     
-    public User addDatabaseToUser( Long userId,Long databaseId) {
-    	User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        Database database = databaseRepository.findById(databaseId).orElseThrow(() -> new RuntimeException("Database not found"));
-        if(!user.getDatabases().contains(database))
-        	user.getDatabases().add(database);
-        return userRepository.save(user);
-    }
-    
-    public List<Connexion> getUserConnexions( Long userId) {
-    	 User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-    	 List<Connexion> connexions = new ArrayList<>();
-    	 for (Database db : user.getDatabases()) {
-    	     if (!connexions.contains(db.getConnexion())) {
-    	         connexions.add(db.getConnexion());
-    	     }
-    	 }
-
-         return connexions;
-    }
+   
     
     public List<User> findUsersByMail(String mail) {
     	List<User> userFound = new ArrayList<User>();
@@ -90,6 +66,11 @@ public class UserService {
         }
         return null;
     }
+
+	public List<Rapport> getUserRapports(Long id) {
+		// TODO Auto-generated method stub
+		return userRepository.findById(id).get().getRapports();
+	}
     
     
 }

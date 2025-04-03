@@ -31,8 +31,7 @@ public class ConnexionService {
 	@Autowired 
     private DatabaseRepository databaseRepository;
 	
-    @Autowired
-    private UserRepository userRepository;
+   
     
     @Autowired
     private TableRepository tableRepository;
@@ -41,10 +40,7 @@ public class ConnexionService {
     @Autowired
     private ColumnRepository columnRepository;
 	
-	public Connexion createConnexion(Connexion cnx) {
-		
-		
-		    
+	public Connexion createConnexion(Connexion cnx) {   
 	    if (!testConnection(cnx)) {
 	        throw new RuntimeException("Connection failed! Unable to add connexion.");
 	    }
@@ -55,11 +51,6 @@ public class ConnexionService {
 	    List<Database> databases = fetchDatabases(savedConnexion);
 	   
 	    savedConnexion.setDatabases(databases);
-	    
-	    User creator = userRepository.findById(cnx.getCreator().getIdentif()).get();
-	    creator.getDatabases().addAll(databases);
-	    userRepository.save(creator);
-
 	    return savedConnexion;
 	}
 	

@@ -13,6 +13,7 @@ import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.analyst.Analyst;
 import com.example.demo.users.User;
 
 @Service
@@ -68,7 +69,7 @@ public class DatabaseService {
             existingDatabase.setName(updatedDatabase.getName());
             existingDatabase.setDbtype(updatedDatabase.getDbtype());
             existingDatabase.setConnexion(updatedDatabase.getConnexion());
-            existingDatabase.setUsers(updatedDatabase.getUsers());
+            existingDatabase.setAnalysts(updatedDatabase.getAnalysts());
             existingDatabase.setUpdatedAt(LocalDate.now());
             return databaseRepository.save(existingDatabase);
         } else {
@@ -82,9 +83,9 @@ public class DatabaseService {
     }
     
     
-    public List<User> getUsersByDatabaseId(Long dbId) {
+    public List<Analyst> getUsersByDatabaseId(Long dbId) {
         Database database = databaseRepository.findByIdWithUsers(dbId)
                 .orElseThrow(() -> new RuntimeException("Database not found with id: " + dbId));
-        return database.getUsers();
+        return database.getAnalysts();
     }
 } 
