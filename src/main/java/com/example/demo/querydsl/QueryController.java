@@ -58,7 +58,7 @@ public class QueryController {
     
     @PostMapping("/update")
     public ResponseEntity<Map<String, Object>> UpdateTableData(@RequestBody UpdateRequestDTO request) {
-        Long rowsAffected = dynamicQueryService.updateTableData(request);
+        Long rowsAffected = dynamicQueryService.updateWithJoins(request);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

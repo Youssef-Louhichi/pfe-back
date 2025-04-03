@@ -15,14 +15,19 @@ import com.example.demo.tablecolumns.ColumnRepository;
 
 import com.example.demo.tablecolumns.TabColumn;
 
+
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.dto.InsertRequestDTO;
+import com.example.demo.dto.JoinRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
 
 import com.example.demo.tablecolumns.ColumnRepository;
 import com.example.demo.tablecolumns.TabColumn;
 
 import com.example.demo.dto.UpdateRequestDTO;
+
+import com.example.demo.tablecolumns.ColumnRepository;
+import com.example.demo.tablecolumns.TabColumn;
 
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
@@ -253,11 +258,16 @@ Expressions.template(Object.class, joinCondition.getFirstColumnName()),
 Expressions.template(Object.class, secondTable),
 Expressions.template(Object.class, joinCondition.getSecondColumnName())
 );
+System.out.println(joinCondition.getFirstColumnName());
+System.out.println(firstTable);
+System.out.println(joinCondition.getSecondColumnName());
+System.out.println(secondTable);
 
 // Apply join type
 switch (joinCondition.getJoinType().toUpperCase()) {
 case "INNER":
  query.innerJoin(secondTablePath).on(joinOnCondition);
+ System.out.print("okkkkk");
  break;
 case "LEFT":
  query.leftJoin(secondTablePath).on(joinOnCondition);
@@ -632,5 +642,129 @@ if (aggregateExpr != null) {
                     throw new IllegalArgumentException("Unsupported operator: " + operator);
             }
         }
+    }
+    
+    
+    
+    public Long updateTableDataWithJoins(UpdateRequestDTO request) {
+        // Validate request
+        if (request.getTableId() == null) {
+            throw new IllegalArgumentException("Table ID must be provided");
+        }
+
+        if (request.getColumnValues() == null || request.getColumnValues().isEmpty()) {
+            throw new IllegalArgumentException("Column values must be provided");
+        }
+
+        if ((request.getFilters() == null || request.getFilters().isEmpty()) && 
+            (request.getJoins() == null || request.getJoins().isEmpty())) {
+            throw new IllegalArgumentException("At least one filter condition or join must be provided for update");
+        }
+
+        // Get table
+        DbTable table = tableRepository.findById(request.getTableId())
+            .orElseThrow(() -> new RuntimeException("Table not found with ID: " + request.getTableId()));
+
+        // STEP 1: Create a QueryRequestDTO to fetch the records using joins
+        QueryRequestDTO fetchRequest = new QueryRequestDTO();
+        
+        // Add main table and any joined tables
+        List<Long> allTableIds = new ArrayList<>();
+        allTableIds.add(request.getTableId());
+        
+        // Add all tables involved in joins
+        if (request.getJoins() != null) {
+            for (JoinCondition join : request.getJoins()) {
+                if (!allTableIds.contains(join.getFirstTableId())) {
+                    allTableIds.add(join.getFirstTableId());
+                }
+                if (!allTableIds.contains(join.getSecondTableId())) {
+                    allTableIds.add(join.getSecondTableId());
+                }
+            }
+        }
+        fetchRequest.setTableId(allTableIds);
+        System.out.println("xxxxxxxxxxxxxxxxxxxxxxx"+ allTableIds);
+        // Get columns for the main table (we only need these for the update identification)
+        List<TabColumn> mainTableColumns = columnRepository.findByTableId(request.getTableId());
+        List<Long> mainColumnIds = mainTableColumns.stream()
+            .map(TabColumn::getId)
+            .collect(Collectors.toList());
+        fetchRequest.setColumnId(mainColumnIds);
+        
+        // Set up join conditions
+        if (request.getJoins() != null && !request.getJoins().isEmpty()) {
+            JoinRequestDTO joinRequest = new JoinRequestDTO();
+            joinRequest.setJoinConditions(request.getJoins());
+            fetchRequest.setJoinRequest(joinRequest);
+            System.out.println("eeeeeeeeeeeeeeeeeeeeeeeee"+joinRequest.getJoinConditions());
+            
+        }
+        
+        
+        // Add the same filters as the update request
+        fetchRequest.setFilters(request.getFilters());
+        System.out.println("eeeeeeeeeeeeeeeeeeeeeeeee"+fetchRequest);
+        // STEP 2: Fetch the records that will be updated
+        List<Map<String, Object>> recordsToUpdate = fetchTableDataWithCondition(fetchRequest);
+        
+        if (recordsToUpdate.isEmpty()) {
+            System.out.println("No records found matching the join conditions");
+            return 0L;
+        }
+        
+        System.out.println("Found " + recordsToUpdate.size() + " records to update");
+        
+        // STEP 3: Update each record individually
+        long totalRowsUpdated = 0;
+        String tableName = table.getName();
+        
+        for (Map<String, Object> record : recordsToUpdate) {
+            // Create a new filter condition for this specific record
+            List<FilterCondition> recordFilters = new ArrayList<>();
+            
+            // Use the ID columns from the main table to identify this record uniquely
+            for (TabColumn column : mainTableColumns) {
+                String columnAlias = tableName + "_" + column.getName();
+                if (record.containsKey(columnAlias) && record.get(columnAlias) != null) {
+                    FilterCondition idFilter = new FilterCondition();
+                    idFilter.setColumnName(column.getName());
+                    idFilter.setTableName(tableName);
+                    idFilter.setOperator("=");
+                    idFilter.setValue(String.valueOf(record.get(columnAlias)));
+                    recordFilters.add(idFilter);
+                    
+                    // We only need one unique identifier column (typically the ID)
+                    // but you could add more if needed for compound keys
+                    break;
+                }
+            }
+            
+            if (recordFilters.isEmpty()) {
+                System.out.println("Warning: Could not create unique filter for a record. Skipping.");
+                continue;
+            }
+            
+            // Create a new update request for just this record
+            UpdateRequestDTO singleUpdateRequest = new UpdateRequestDTO();
+            singleUpdateRequest.setTableId(request.getTableId());
+            singleUpdateRequest.setColumnValues(request.getColumnValues());
+            singleUpdateRequest.setFilters(recordFilters);
+            
+            try {
+                Long rowsUpdated = updateTableData(singleUpdateRequest);
+                totalRowsUpdated += rowsUpdated;
+            } catch (Exception e) {
+                System.err.println("Error updating record: " + e.getMessage());
+                // You can choose to continue with other records or throw an exception
+            }
+        }
+        
+        return totalRowsUpdated;
+    }
+
+    // Add this method to handle the new request format
+    public Long updateWithJoins(UpdateRequestDTO request) {
+        return updateTableDataWithJoins(request);
     }
 }
