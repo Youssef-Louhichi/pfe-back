@@ -1,29 +1,29 @@
 package com.example.demo.querydsl;
 
 import com.querydsl.sql.SQLQueryFactory;
-<<<<<<< HEAD
+
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
-=======
+
 import com.querydsl.sql.dml.SQLInsertClause;
 import com.querydsl.sql.dml.SQLUpdateClause;
-import com.example.demo.Condition.AggregationRequest;
-import com.example.demo.Condition.FilterCondition;
-import com.example.demo.Condition.JoinCondition;
-import com.example.demo.TableColumns.ColumnRepository;
+import com.example.demo.condition.AggregationRequest;
+import com.example.demo.condition.FilterCondition;
+import com.example.demo.condition.JoinCondition;
+import com.example.demo.tablecolumns.ColumnRepository;
 
-import com.example.demo.TableColumns.TabColumn;
->>>>>>> c8afa318e486484683bf76c1889103bd95cf04a1
+import com.example.demo.tablecolumns.TabColumn;
+
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
-<<<<<<< HEAD
+
 import com.example.demo.tablecolumns.ColumnRepository;
 import com.example.demo.tablecolumns.TabColumn;
-=======
+
 import com.example.demo.dto.UpdateRequestDTO;
->>>>>>> c8afa318e486484683bf76c1889103bd95cf04a1
+
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
 import com.querydsl.core.Tuple;

@@ -3,7 +3,7 @@ package com.example.demo.dto;
 import java.util.List;
 import java.util.Map;
 
-import com.example.demo.Condition.FilterCondition;
+import com.example.demo.condition.FilterCondition;
 
 public class UpdateRequestDTO {
 	   private Long tableId;
