@@ -12,22 +12,27 @@ import org.springframework.stereotype.Service;
 
 
 
+
+
 @Service
 public class RapportService {
 
 	
 	
 	 @Autowired
-	    private RapportRepository RapportRepository;
+	    private RapportRepository rapportRepository;
+	 
+	
+
 	 
 	
 
 	    public List<Rapport> getAllRapports() {
-	        return RapportRepository.findAll();
+	        return rapportRepository.findAll();
 	    }
 
 	    public Optional<Rapport> getRapportById(Long id) {
-	        return RapportRepository.findById(id);
+	        return rapportRepository.findById(id);
 	    }
 
 	    public Rapport saveRapport(Rapport rapport) {
@@ -35,13 +40,13 @@ public class RapportService {
 	    		rapport.setCreatedAt(LocalDate.now());
 	    	else
 	    		rapport.setUpdatedAt(LocalDate.now());
-	        return RapportRepository.save(rapport);
+	        return rapportRepository.save(rapport);
 	    }
 
 	    
 
 	    public void deleteRapport(Long id) {
-	        RapportRepository.deleteById(id);
+	    	rapportRepository.deleteById(id);
 	    }
 	
 	
