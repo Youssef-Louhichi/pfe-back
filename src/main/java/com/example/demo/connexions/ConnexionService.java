@@ -55,125 +55,117 @@ public class ConnexionService {
 	}
 	
 	public List<Database> fetchDatabases(Connexion connexion) {
-        DataSource dataSource = createDataSource(connexion);
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        List<Database> databases = new ArrayList<>();
+	    DataSource dataSource = createDataSource(connexion);
+	    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+	    List<Database> databases = new ArrayList<>();
 
-        String query = "";
-
-        if (connexion.getDbtype() == DatabaseType.MySQL) {
-        	query = "SHOW DATABASES WHERE `Database` NOT IN ('information_schema', 'performance_schema')";
-        } else if (connexion.getDbtype() == DatabaseType.Oracle) {
-            query = "SELECT name FROM v$database";
-        }
-
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(query);
-            for (Map<String, Object> row : rows) {
-                String dbName = row.values().iterator().next().toString();
-                Database db = new Database();
-                db.setName(dbName);
-                db.setDbtype(connexion.getDbtype());
-                db.setCreatedAt(LocalDate.now());
-                db.setUpdatedAt(LocalDate.now());
-                db.setConnexion(connexion);
-                
-                databases.add(db);
-            }
-            databaseRepository.saveAll(databases);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch databases: " + e.getMessage());
-        }
-        
-        for (Database db : databases) {
-	        List<DbTable> tables = fetchTables(db,connexion);
-		    db.setTables(tables);
-
+	    try {
+	        if (connexion.getDbtype() == DatabaseType.MySQL) {
+	            // Exclude system databases and handle case sensitivity
+	            String query = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA " +
+	                         "WHERE SCHEMA_NAME NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')";
+	            jdbcTemplate.queryForList(query).forEach(row -> {
+	                Database db = createDatabaseEntity(row.get("SCHEMA_NAME").toString(), connexion);
+	                databases.add(db);
+	            });
+	        } 
+	        else if (connexion.getDbtype() == DatabaseType.Oracle) {
+	            
+	                Database db = createDatabaseEntity("XE", connexion);
+	                databases.add(db);
+	            
+	        }
+	        
+	        databaseRepository.saveAll(databases);
+	        databases.forEach(db -> db.setTables(fetchTables(db, connexion)));
+	        return databases;
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to fetch databases: " + e.getMessage(), e);
 	    }
-	    databaseRepository.saveAll(databases);
-	    
-        return databases;
-    }
+	}
 
-    public List<DbTable> fetchTables(Database database, Connexion connexion) {
-        DataSource dataSource = createDataSource(connexion);
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        List<DbTable> tables = new ArrayList<>();
+	private Database createDatabaseEntity(String name, Connexion connexion) {
+	    Database db = new Database();
+	    db.setName(name);
+	    db.setDbtype(connexion.getDbtype());
+	    db.setCreatedAt(LocalDate.now());
+	    db.setUpdatedAt(LocalDate.now());
+	    db.setConnexion(connexion);
+	    return db;
+	}
 
-        String query = "";
-        if (connexion.getDbtype() == DatabaseType.MySQL) {
-            query = "SHOW TABLES FROM "+ database.getName();
-        } else if (connexion.getDbtype() == DatabaseType.Oracle) {
-            query = "SELECT table_name FROM all_tables WHERE owner = USER";
-        }
+	public List<DbTable> fetchTables(Database database, Connexion connexion) {
+	    DataSource dataSource = createDataSource(connexion);
+	    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+	    List<DbTable> tables = new ArrayList<>();
 
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(query);
-            for (Map<String, Object> row : rows) {
-                String tableName = row.values().iterator().next().toString();
-                DbTable table = new DbTable();
-                table.setName(tableName);
-                table.setDatabase(database);
-                tables.add(table);
-                
-            }
-            
-            tableRepository.saveAll(tables);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch tables: " + e.getMessage());
-        }
-        
-        for (DbTable table : tables) {
-	        table.setDatabase(database);
-	        List<TabColumn> columns = fetchColumns(table,connexion);
-		    table.setColumns(columns);
-
+	    try {
+	        if (connexion.getDbtype() == DatabaseType.MySQL) {
+	            String query = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES " +
+	                         "WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'";
+	            jdbcTemplate.queryForList(query, database.getName())
+	                .forEach(row -> tables.add(createTableEntity(row.get("TABLE_NAME").toString(), database)));
+	        } 
+	        else if (connexion.getDbtype() == DatabaseType.Oracle) {
+	            // Oracle: Using ALL_TABLES with explicit schema name
+	            String query = "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = ?";
+	            jdbcTemplate.queryForList(query, database.getName().toUpperCase())
+	                .forEach(row -> tables.add(createTableEntity(row.get("TABLE_NAME").toString(), database)));
+	        }
+	        
+	        tableRepository.saveAll(tables);
+	        tables.forEach(table -> table.setColumns(fetchColumns(table, connexion)));
+	        return tables;
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to fetch tables for database " + database.getName() + ": " + e.getMessage(), e);
 	    }
-	    tableRepository.saveAll(tables);
+	}
+	
+	private DbTable createTableEntity(String name, Database database) {
+	    DbTable table = new DbTable();
+	    table.setName(name);
+	    table.setDatabase(database);
+	    return table;
+	}
 
-        return tables;
-    }
+	public List<TabColumn> fetchColumns(DbTable table, Connexion connexion) {
+	    DataSource dataSource = createDataSource(connexion);
+	    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+	    List<TabColumn> columns = new ArrayList<>();
 
-    public List<TabColumn> fetchColumns(DbTable table, Connexion connexion) {
-        DataSource dataSource = createDataSource(connexion);
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        List<TabColumn> columns = new ArrayList<>();
-
-        String query = "";
-        Object[] params;
-
-        if (connexion.getDbtype() == DatabaseType.MySQL) {
-            query = "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
-            params = new Object[]{table.getDatabase().getName(), table.getName()};
-        } else if (connexion.getDbtype() == DatabaseType.Oracle) {
-            query = "SELECT COLUMN_NAME, DATA_TYPE FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = ? AND OWNER = ?";
-            params = new Object[]{table.getName().toUpperCase(), connexion.getUsername().toUpperCase()};
-        } else {
-            throw new RuntimeException("Unsupported database type");
-        }
-
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(query, params);
-            for (Map<String, Object> row : rows) {
-                TabColumn column = new TabColumn();
-                column.setName(row.get("COLUMN_NAME").toString());
-                column.setType(row.get("DATA_TYPE").toString());
-                column.setTable(table);  
-                columns.add(column);
-            }
-            
-            columnRepository.saveAll(columns);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch columns: " + e.getMessage());
-        }
-        
-        for (TabColumn column : columns) {
-	        column.setTable(table);
+	    try {
+	        if (connexion.getDbtype() == DatabaseType.MySQL) {
+	            String query = "SELECT COLUMN_NAME, COLUMN_TYPE, DATA_TYPE, IS_NULLABLE " +
+	                         "FROM INFORMATION_SCHEMA.COLUMNS " +
+	                         "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? " +
+	                         "ORDER BY ORDINAL_POSITION";
+	            jdbcTemplate.queryForList(query, table.getDatabase().getName(), table.getName())
+	                .forEach(row -> columns.add(createColumnEntity(row, table)));
+	        } 
+	        else if (connexion.getDbtype() == DatabaseType.Oracle) {
+	            String query = "SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE " +
+	                         "FROM ALL_TAB_COLUMNS " +
+	                         "WHERE OWNER = ? AND TABLE_NAME = ? " +
+	                         "ORDER BY COLUMN_ID";
+	            jdbcTemplate.queryForList(query, 
+	                    table.getDatabase().getName().toUpperCase(), 
+	                    table.getName().toUpperCase())
+	                .forEach(row -> columns.add(createColumnEntity(row, table)));
+	        }
+	        
+	        return columnRepository.saveAll(columns);
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to fetch columns for table " + table.getName() + ": " + e.getMessage(), e);
 	    }
-	    columnRepository.saveAll(columns);
+	}
 
-        return columns;
-    }
+	private TabColumn createColumnEntity(Map<String, Object> row, DbTable table) {
+	    TabColumn column = new TabColumn();
+	    column.setName(row.get("COLUMN_NAME").toString());
+	    column.setType(row.get("DATA_TYPE").toString());
+	    column.setTable(table);
+	    return column;
+	}
     
     public List<Connexion> getAllConnexions() {
         return connexionRepository.findAll();
@@ -233,17 +225,7 @@ public class ConnexionService {
     }
     
     
-    /*public void testConnection(Connexion connexion) {
-        DataSource dataSource = createDataSource(connexion);
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        
-        try {
-            jdbcTemplate.queryForList("SHOW SCHEMAS").forEach(row -> System.out.println(row));
-            System.out.println("connected");
-        } catch (Exception e) {
-            System.err.println("failed to connect: " + e.getMessage());
-        }
-    }*/
+
     
     
     public boolean testConnection(Connexion connexion) {
