@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.dto.DeleteRequestDTO;
 import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
 import com.example.demo.dto.UpdateRequestDTO;
@@ -58,11 +59,23 @@ public class QueryController {
     
     @PostMapping("/update")
     public ResponseEntity<Map<String, Object>> UpdateTableData(@RequestBody UpdateRequestDTO request) {
-        Long rowsAffected = dynamicQueryService.updateWithJoins(request);
+        Long rowsAffected = dynamicQueryService.updateTableDataWithJoins(request);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("rowsAffected", rowsAffected);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    
+    @PostMapping("/delete")
+    public ResponseEntity<Map<String, Object>> DeleteTableData(@RequestBody DeleteRequestDTO request) {
+        Long rowsAffected = dynamicQueryService.deleteTableDataWithJoins(request);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("rowsdeleted", rowsAffected);
         
         return ResponseEntity.ok(response);
     }

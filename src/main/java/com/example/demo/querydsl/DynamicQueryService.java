@@ -5,7 +5,7 @@ import com.querydsl.sql.SQLQueryFactory;
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
-
+import com.querydsl.sql.dml.SQLDeleteClause;
 import com.querydsl.sql.dml.SQLInsertClause;
 import com.querydsl.sql.dml.SQLUpdateClause;
 import com.example.demo.condition.AggregationRequest;
@@ -17,6 +17,7 @@ import com.example.demo.tablecolumns.TabColumn;
 
 
 import com.example.demo.connexions.DatabaseType;
+import com.example.demo.dto.DeleteRequestDTO;
 import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.JoinRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
@@ -372,7 +373,6 @@ Expression<?> aggregateExpr = null;
 
 switch (agg.getFunction().toUpperCase()) {
     case "MAX":
-        // Utiliser un template pour créer une expression numérique typée
         aggregateExpr = SQLExpressions.max(
         		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
 
@@ -396,7 +396,7 @@ switch (agg.getFunction().toUpperCase()) {
         );
         break;
     case "COUNT":
-        // Pour COUNT, on peut utiliser n'importe quel type d'expression
+        
         aggregateExpr = SQLExpressions.count(
         		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
 
@@ -684,8 +684,7 @@ if (aggregateExpr != null) {
             }
         }
         fetchRequest.setTableId(allTableIds);
-        System.out.println("xxxxxxxxxxxxxxxxxxxxxxx"+ allTableIds);
-        // Get columns for the main table (we only need these for the update identification)
+
         List<TabColumn> mainTableColumns = columnRepository.findByTableId(request.getTableId());
         List<Long> mainColumnIds = mainTableColumns.stream()
             .map(TabColumn::getId)
@@ -697,7 +696,6 @@ if (aggregateExpr != null) {
             JoinRequestDTO joinRequest = new JoinRequestDTO();
             joinRequest.setJoinConditions(request.getJoins());
             fetchRequest.setJoinRequest(joinRequest);
-            System.out.println("eeeeeeeeeeeeeeeeeeeeeeeee"+joinRequest.getJoinConditions());
             
         }
         
@@ -763,8 +761,250 @@ if (aggregateExpr != null) {
         return totalRowsUpdated;
     }
 
-    // Add this method to handle the new request format
-    public Long updateWithJoins(UpdateRequestDTO request) {
-        return updateTableDataWithJoins(request);
+  
+    
+    
+    public Long deleteTableDataWithJoins(DeleteRequestDTO request) {
+        // Validate request
+        if (request.getTableId() == null) {
+            throw new IllegalArgumentException("Table ID must be provided");
+        }
+
+        if ((request.getFilters() == null || request.getFilters().isEmpty()) && 
+            (request.getJoins() == null || request.getJoins().isEmpty())) {
+            throw new IllegalArgumentException("At least one filter condition or join must be provided for delete");
+        }
+
+        // Get table
+        DbTable table = tableRepository.findById(request.getTableId())
+            .orElseThrow(() -> new RuntimeException("Table not found with ID: " + request.getTableId()));
+
+        // STEP 1: Create a QueryRequestDTO to fetch the records using joins
+        QueryRequestDTO fetchRequest = new QueryRequestDTO();
+        
+        // Add main table and any joined tables
+        List<Long> allTableIds = new ArrayList<>();
+        allTableIds.add(request.getTableId());
+        
+        // Add all tables involved in joins
+        if (request.getJoins() != null) {
+            for (JoinCondition join : request.getJoins()) {
+                if (!allTableIds.contains(join.getFirstTableId())) {
+                    allTableIds.add(join.getFirstTableId());
+                }
+                if (!allTableIds.contains(join.getSecondTableId())) {
+                    allTableIds.add(join.getSecondTableId());
+                }
+            }
+        }
+        fetchRequest.setTableId(allTableIds);
+
+        List<TabColumn> mainTableColumns = columnRepository.findByTableId(request.getTableId());
+        List<Long> mainColumnIds = mainTableColumns.stream()
+            .map(TabColumn::getId)
+            .collect(Collectors.toList());
+        fetchRequest.setColumnId(mainColumnIds);
+        
+        // Set up join conditions
+        if (request.getJoins() != null && !request.getJoins().isEmpty()) {
+            JoinRequestDTO joinRequest = new JoinRequestDTO();
+            joinRequest.setJoinConditions(request.getJoins());
+            fetchRequest.setJoinRequest(joinRequest);
+        }
+        
+        // Add the same filters as the delete request
+        fetchRequest.setFilters(request.getFilters());
+        System.out.println("Preparing delete with joins query: " + fetchRequest);
+        
+        // STEP 2: Fetch the records that will be deleted
+        List<Map<String, Object>> recordsToDelete = fetchTableDataWithCondition(fetchRequest);
+        
+        if (recordsToDelete.isEmpty()) {
+            System.out.println("No records found matching the join conditions");
+            return 0L;
+        }
+        
+        System.out.println("Found " + recordsToDelete.size() + " records to delete");
+        
+        // STEP 3: Delete each record individually
+        long totalRowsDeleted = 0;
+        String tableName = table.getName();
+        
+        for (Map<String, Object> record : recordsToDelete) {
+            // Create a new filter condition for this specific record
+            List<FilterCondition> recordFilters = new ArrayList<>();
+            
+            // Use the ID columns from the main table to identify this record uniquely
+            for (TabColumn column : mainTableColumns) {
+                String columnAlias = tableName + "_" + column.getName();
+                if (record.containsKey(columnAlias) && record.get(columnAlias) != null) {
+                    FilterCondition idFilter = new FilterCondition();
+                    idFilter.setColumnName(column.getName());
+                    idFilter.setTableName(tableName);
+                    idFilter.setOperator("=");
+                    idFilter.setValue(String.valueOf(record.get(columnAlias)));
+                    recordFilters.add(idFilter);
+                    
+                    // We only need one unique identifier column (typically the ID)
+                    break;
+                }
+            }
+            
+            if (recordFilters.isEmpty()) {
+                System.out.println("Warning: Could not create unique filter for a record. Skipping.");
+                continue;
+            }
+            
+            try {
+                Long rowsDeleted = deleteTableData(new DeleteRequestDTO(request.getTableId(), recordFilters, null));
+                totalRowsDeleted += rowsDeleted;
+            } catch (Exception e) {
+                System.err.println("Error deleting record: " + e.getMessage());
+                // You can choose to continue with other records or throw an exception
+            }
+        }
+        
+        return totalRowsDeleted;
+    }
+    
+    
+    public Long deleteTableData(DeleteRequestDTO request) {
+        // Validate request
+        if (request.getTableId() == null) {
+            throw new IllegalArgumentException("Table ID must be provided");
+        }
+
+        if (request.getFilters() == null || request.getFilters().isEmpty()) {
+            throw new IllegalArgumentException("At least one filter condition must be provided for delete");
+        }
+
+        // Get table
+        DbTable table = tableRepository.findById(request.getTableId())
+            .orElseThrow(() -> new RuntimeException("Table not found with ID: " + request.getTableId()));
+
+        // Get database connection details
+        DatabaseType dbType = table.getDatabase().getDbtype();
+        String dbUrl, driver;
+
+        if (dbType == DatabaseType.MySQL) {
+            dbUrl = "jdbc:mysql://" + table.getDatabase().getConnexion().getHost() + ":"
+                + table.getDatabase().getConnexion().getPort() + "/"
+                + table.getDatabase().getName();
+            driver = "com.mysql.cj.jdbc.Driver";
+        } else if (dbType == DatabaseType.Oracle) {
+            dbUrl = "jdbc:oracle:thin:@" + table.getDatabase().getConnexion().getHost() + ":"
+                + table.getDatabase().getConnexion().getPort() + ":"
+                + table.getDatabase().getName();
+            driver = "oracle.jdbc.OracleDriver";
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+
+        String username = table.getDatabase().getConnexion().getUsername();
+        String password = table.getDatabase().getConnexion().getPassword();
+
+        SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
+
+        try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
+            // Create path object for the table
+            RelationalPathBase<?> path = new RelationalPathBase<>(
+                Object.class,
+                table.getName(),
+                table.getName(),
+                table.getName()
+            );
+
+            // Build delete query
+            SQLDeleteClause delete = queryFactory.delete(path);
+
+            // Add where conditions from filters
+            applyFiltersToDelete(delete, request.getFilters(), Collections.singletonList(table));
+
+            // Execute delete
+            System.out.println("Executing delete: " + delete.toString());
+            long result = delete.execute();
+            System.out.println("Delete completed. Rows affected: " + result);
+
+            return result;
+        } catch (Exception e) {
+            System.err.println("Error executing delete: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to delete data: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Applies filter conditions to a delete clause
+     */
+    private void applyFiltersToDelete(SQLDeleteClause delete, List<FilterCondition> filters, List<DbTable> tables) {
+        if (filters == null || filters.isEmpty()) {
+            System.out.println("No filters applied to delete.");
+            return;
+        }
+
+        Map<String, DbTable> tableNameMap = tables.stream()
+            .collect(Collectors.toMap(DbTable::getName, t -> t));
+
+        for (FilterCondition filter : filters) {
+            System.out.println("Filter applied to delete -> Column: " + filter.getColumnName() +
+                              ", Operator: " + filter.getOperator() +
+                              ", Value: " + filter.getValue());
+
+            // Handle qualified column names (table.column format)
+            String columnName = filter.getColumnName();
+            String tableName = null;
+
+            if (columnName.contains(".")) {
+                String[] parts = columnName.split("\\.", 2);
+                tableName = parts[0];
+                columnName = parts[1];
+            } else if (filter.getTableName() != null) {
+                // Use tableName from filter if provided
+                tableName = filter.getTableName();
+            } else if (tables.size() == 1) {
+                // If only one table, use that
+                tableName = tables.get(0).getName();
+            } else {
+                // Cannot determine which table the column belongs to
+                throw new IllegalArgumentException("Column name must be qualified with table name when multiple tables are used: " + columnName);
+            }
+
+            String operator = filter.getOperator().toLowerCase();
+            String value = filter.getValue();
+            
+            Expression<?> column = Expressions.template(Object.class, "{0}.{1}",
+                Expressions.template(Object.class, tableName),
+                Expressions.template(Object.class, columnName)
+            );
+
+            switch (operator) {
+                case "=":
+                    delete.where(Expressions.booleanTemplate("{0} = {1}", column, value));
+                    break;
+                case "!=":
+                    delete.where(Expressions.booleanTemplate("{0} != {1}", column, value));
+                    break;
+                case "like":
+                    delete.where(Expressions.booleanTemplate("{0} LIKE {1}", column, "%" + value + "%"));
+                    break;
+                case ">":
+                    delete.where(Expressions.booleanTemplate("{0} > {1}", column, value));
+                    break;
+                case "<":
+                    delete.where(Expressions.booleanTemplate("{0} < {1}", column, value));
+                    break;
+                case ">=":
+                    delete.where(Expressions.booleanTemplate("{0} >= {1}", column, value));
+                    break;
+                case "<=":
+                    delete.where(Expressions.booleanTemplate("{0} <= {1}", column, value));
+                    break;
+                case "in":
+                    delete.where(Expressions.booleanTemplate("{0} IN ({1})", column, value));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        }
     }
 }
