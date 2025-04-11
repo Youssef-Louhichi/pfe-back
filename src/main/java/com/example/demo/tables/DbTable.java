@@ -4,8 +4,11 @@ import java.io.Serializable;
 import java.util.List;
 
 import com.example.demo.database.Database;
+import com.example.demo.relations.RelationDatabase;
+import com.example.demo.relations.RelationTable;
 import com.example.demo.requete.Requete;
 import com.example.demo.tablecolumns.TabColumn;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;
@@ -33,7 +36,7 @@ public class DbTable implements Serializable{
 
     @ManyToOne
     @JoinColumn(name = "database_id", nullable = false)
-    @JsonIgnoreProperties("tables")
+    @JsonIgnore
     private Database database;
 
     @OneToMany(mappedBy = "table", cascade = CascadeType.ALL)
@@ -43,6 +46,10 @@ public class DbTable implements Serializable{
     
     @OneToMany(mappedBy = "tableReq", cascade = CascadeType.ALL)
    	private List<Requete> requetes;
+    
+    @OneToMany(mappedBy = "table", cascade = CascadeType.ALL,orphanRemoval = true)
+    @JsonIgnore
+    private List<RelationTable> relationTable;
       
     
 	public List<TabColumn> getColumns() {

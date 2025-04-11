@@ -109,7 +109,7 @@ public class ConnexionService {
 	        else if (connexion.getDbtype() == DatabaseType.Oracle) {
 	            // Oracle: Using ALL_TABLES with explicit schema name
 	            String query = "SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = ?";
-	            jdbcTemplate.queryForList(query, database.getName().toUpperCase())
+	            jdbcTemplate.queryForList(query, connexion.getUsername().toUpperCase())
 	                .forEach(row -> tables.add(createTableEntity(row.get("TABLE_NAME").toString(), database)));
 	        }
 	        
@@ -148,7 +148,7 @@ public class ConnexionService {
 	                         "WHERE OWNER = ? AND TABLE_NAME = ? " +
 	                         "ORDER BY COLUMN_ID";
 	            jdbcTemplate.queryForList(query, 
-	                    table.getDatabase().getName().toUpperCase(), 
+	                    table.getDatabase().getConnexion().getUsername().toUpperCase(), 
 	                    table.getName().toUpperCase())
 	                .forEach(row -> columns.add(createColumnEntity(row, table)));
 	        }

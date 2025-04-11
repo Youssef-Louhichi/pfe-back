@@ -49,11 +49,7 @@ public class DatabaseController {
         databaseService.deleteDatabase(id);
     }
     
-    @GetMapping("/{dbId}/users")
-    public ResponseEntity<List<Analyst>> getUsersByDatabaseId(@PathVariable Long dbId) {
-        List<Analyst> users = databaseService.getUsersByDatabaseId(dbId);
-        return ResponseEntity.ok(users);
-    }
+   
     
     
     @GetMapping("/tables/{schemaName}")

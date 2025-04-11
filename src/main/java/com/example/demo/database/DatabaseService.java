@@ -69,7 +69,7 @@ public class DatabaseService {
             existingDatabase.setName(updatedDatabase.getName());
             existingDatabase.setDbtype(updatedDatabase.getDbtype());
             existingDatabase.setConnexion(updatedDatabase.getConnexion());
-            existingDatabase.setAnalysts(updatedDatabase.getAnalysts());
+            existingDatabase.setRelationDatabases(updatedDatabase.getRelationDatabases());
             existingDatabase.setUpdatedAt(LocalDate.now());
             return databaseRepository.save(existingDatabase);
         } else {
@@ -82,10 +82,5 @@ public class DatabaseService {
         databaseRepository.deleteById(id);
     }
     
-    
-    public List<Analyst> getUsersByDatabaseId(Long dbId) {
-        Database database = databaseRepository.findByIdWithUsers(dbId)
-                .orElseThrow(() -> new RuntimeException("Database not found with id: " + dbId));
-        return database.getAnalysts();
-    }
+   
 } 

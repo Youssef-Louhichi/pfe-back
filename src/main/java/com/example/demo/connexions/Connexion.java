@@ -36,7 +36,7 @@ public class Connexion implements Serializable{
 	private LocalDate updatedAt;
 
 	@OneToMany(mappedBy = "connexion", cascade = CascadeType.ALL)
-	@JsonIgnoreProperties("connexion")
+	@JsonIgnore
 	private List<Database> databases;
 	
 	@ManyToOne

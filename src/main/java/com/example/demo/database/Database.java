@@ -5,10 +5,12 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 
-import com.example.demo.analyst.Analyst;
 import com.example.demo.connexions.Connexion;
 import com.example.demo.connexions.DatabaseType;
+
+import com.example.demo.relations.RelationDatabase;
 import com.example.demo.tables.DbTable;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
@@ -30,14 +32,15 @@ public class Database implements Serializable {
     @JsonIgnoreProperties("databases")
     private Connexion connexion;
     
-    @ManyToMany(mappedBy = "databases")
-	@JsonIgnoreProperties("databases")
-    private List<Analyst> analysts;
-
+    @OneToMany(mappedBy = "database", cascade = CascadeType.ALL,orphanRemoval = true)
+    @JsonIgnoreProperties("database analyst")
+    private List<RelationDatabase> relationDatabase;
+    
     private LocalDate createdAt;
     private LocalDate updatedAt;
     
     @OneToMany(mappedBy = "database", cascade = CascadeType.ALL)
+    @JsonIgnoreProperties("database")
 	private List<DbTable> tables;
     
     
@@ -57,14 +60,14 @@ public class Database implements Serializable {
 		this.tables = tables;
 	}
 
-	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<Analyst> analysts,
+	public Database(Long id, String name, DatabaseType dbtype, Connexion connexion, List<RelationDatabase> relationDatabase,
 			LocalDate createdAt, LocalDate updatedAt) {
 		
 		this.id = id;
 		this.name = name;
 		this.dbtype = dbtype;
 		this.connexion = connexion;
-		this.analysts = analysts;
+		this.relationDatabase = relationDatabase;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 	}
@@ -75,12 +78,13 @@ public class Database implements Serializable {
 
 
 
-	public List<Analyst> getAnalysts() {
-		return analysts;
+	@JsonIgnore
+	public List<RelationDatabase> getRelationDatabases() {
+		return relationDatabase;
 	}
 
-	public void setAnalysts(List<Analyst> analysts) {
-		this.analysts = analysts;
+	public void setRelationDatabases(List<RelationDatabase> relationDatabase) {
+		this.relationDatabase = relationDatabase;
 	}
 
 	public Long getId() {

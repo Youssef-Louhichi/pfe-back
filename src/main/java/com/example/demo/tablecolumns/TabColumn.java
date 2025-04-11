@@ -1,17 +1,22 @@
 package com.example.demo.tablecolumns;
 
 import java.io.Serializable;
+import java.util.List;
 
-
+import com.example.demo.relations.RelationColumn;
+import com.example.demo.relations.RelationTable;
 import com.example.demo.tables.DbTable;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -25,6 +30,10 @@ public class TabColumn implements Serializable{
 	private Long id;
 	private String name;	
 	private String type;
+	
+	  @OneToMany(mappedBy = "column", cascade = CascadeType.ALL,orphanRemoval = true)
+	  @JsonIgnore
+	  private List<RelationColumn> relationColumn;
 
    
 
