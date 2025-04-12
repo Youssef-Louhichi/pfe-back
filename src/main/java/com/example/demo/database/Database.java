@@ -33,7 +33,7 @@ public class Database implements Serializable {
     private Connexion connexion;
     
     @OneToMany(mappedBy = "database", cascade = CascadeType.ALL,orphanRemoval = true)
-    @JsonIgnoreProperties("database analyst")
+    @JsonIgnore
     private List<RelationDatabase> relationDatabase;
     
     private LocalDate createdAt;

@@ -45,6 +45,7 @@ public class DbTable implements Serializable{
     
     
     @OneToMany(mappedBy = "tableReq", cascade = CascadeType.ALL)
+    @JsonIgnore
    	private List<Requete> requetes;
     
     @OneToMany(mappedBy = "table", cascade = CascadeType.ALL,orphanRemoval = true)

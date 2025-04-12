@@ -31,6 +31,11 @@ public class TabColumn implements Serializable{
 	private String name;	
 	private String type;
 	
+	@ManyToOne
+    @JoinColumn(name = "table_id", nullable = false)
+    @JsonIgnoreProperties("columns")
+    private DbTable table;
+	
 	  @OneToMany(mappedBy = "column", cascade = CascadeType.ALL,orphanRemoval = true)
 	  @JsonIgnore
 	  private List<RelationColumn> relationColumn;
@@ -46,10 +51,7 @@ public class TabColumn implements Serializable{
 		this.type = type;
 	}
 
-	@ManyToOne
-    @JoinColumn(name = "table_id", nullable = false)
-    @JsonIgnoreProperties("columns")
-    private DbTable table;
+	
 
 
 
