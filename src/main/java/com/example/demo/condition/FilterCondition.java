@@ -1,5 +1,8 @@
 package com.example.demo.condition;
 
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public class FilterCondition {
 
 	
