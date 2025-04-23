@@ -1,9 +1,11 @@
 package com.example.demo.requete;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.example.demo.dto.QueryRequestDTO;
 
 
 
@@ -28,7 +32,7 @@ public class RequeteController {
 	
 	
 	 @PostMapping
-	    public Requete createUser(@RequestBody Requete req) {
+	    public Requete create(@RequestBody Requete req) {
 	        return requeteService.createReq(req);
 	    }
 	 
@@ -36,25 +40,60 @@ public class RequeteController {
 	 
 	 
 	    @GetMapping
-	    public List<Requete> getAllUsers() {
+	    public List<Requete> getAll() {
 	        return requeteService.getAllReq();
 	    }
 
 	    
 	    @GetMapping("/{id}")
-	    public Optional<Requete> getUserById(@PathVariable Long id) {
+	    public Optional<Requete> getById(@PathVariable Long id) {
 	        return requeteService.getReqById(id);
 	    }
 
 	    
 	    @PutMapping("/{id}")
-	    public Requete updateUser(@PathVariable Long id, @RequestBody Requete updatedreq) {
+	    public Requete update(@PathVariable Long id, @RequestBody Requete updatedreq) {
 	        return requeteService.updateReq(id, updatedreq);
 	    }
 
 	    
 	    @DeleteMapping("/{id}")
-	    public void deleteUser(@PathVariable Long id) {
+	    public void delete(@PathVariable Long id) {
 	    	requeteService.deleteReq(id);
 	    }
+	    
+	    
+	    @GetMapping("user/{senderId}")
+	    public List<Requete> getBysenderId(@PathVariable Long senderId) {
+	        return requeteService.findbySender(senderId);
+	    }
+	    
+	    
+	  
+	    @PostMapping("/{scriptId}/add-requete/{requeteId}")
+	    public ResponseEntity<String> addRequeteToScript(
+	            @PathVariable Long scriptId,
+	            @PathVariable Long requeteId) {
+	        String message = requeteService.addRequeteToScript(scriptId, requeteId);
+	        return ResponseEntity.ok(message);
+	    }
+
+	    @PostMapping("/{scriptId}/requete/{requeteId}")
+	    public ResponseEntity<String> removeRequeteFromScript(@PathVariable Long scriptId, @PathVariable Long requeteId) {
+	        String result = requeteService.removeRequeteFromScript(scriptId, requeteId);
+	        return ResponseEntity.ok(result);
+	    }
+	    
+	    
+	    @PostMapping("/exec/{id}")
+	    public ResponseEntity<List<Map<String, Object>>> fetchTableData(@PathVariable Long id)
+	    {
+	    	List<Map<String, Object>> result = requeteService.execReqFromDb(id);
+     
+	        return ResponseEntity.ok(result);
+	    }
+
+	    
+	    
+	    
 }

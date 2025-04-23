@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class QueryDSLFactory {
+	
+	
 
     public SQLQueryFactory createSQLQueryFactory(String url, String username, String password, String driver) {
         HikariDataSource dataSource = new HikariDataSource();
