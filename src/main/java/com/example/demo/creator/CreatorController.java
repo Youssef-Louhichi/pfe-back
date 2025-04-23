@@ -23,7 +23,7 @@ public class CreatorController {
         return creatorService.getCreatorById(id);
     }
 
-    @PostMapping
+    @PostMapping("/register")
     public Creator createCreator(@RequestBody Creator creator) {
         return creatorService.createCreator(creator);
     }

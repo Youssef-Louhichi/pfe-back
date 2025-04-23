@@ -5,9 +5,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.example.demo.connexions.Connexion;
-import com.example.demo.rapport.Rapport;
 
+import com.example.demo.rapport.Rapport;
+import com.example.demo.security.JwtService;
+
+import jakarta.servlet.http.HttpSession;
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +23,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+   	private JwtService jwtService;
 
     
    
@@ -64,12 +71,21 @@ public class UserController {
     public ResponseEntity<?> login(@RequestBody User userReq) {
         User user = userService.loginUser(userReq.getMail(), userReq.getPassword());
         if (user != null) {
+        	String token = jwtService.generateToken(user); 
+       
             Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
             response.put("user", user);
 
             return ResponseEntity.ok(response);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+    }
+    
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpSession session) {
+        session.invalidate();
+        return ResponseEntity.ok(Collections.singletonMap("message", "Logged out successfully"));
     }
     
 }

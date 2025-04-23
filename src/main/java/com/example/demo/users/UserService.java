@@ -1,11 +1,10 @@
 package com.example.demo.users;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.connexions.Connexion;
-import com.example.demo.database.Database;
-import com.example.demo.database.DatabaseRepository;
+
 import com.example.demo.rapport.Rapport;
 
 import java.util.ArrayList;
@@ -17,6 +16,9 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    
+    
+   	private PasswordEncoder passwordEncoder;
     
    
 
@@ -58,7 +60,8 @@ public class UserService {
     public User loginUser(String email, String pw) {
         User u = this.userRepository.findByMail(email);
         if (u != null) {     
-            if (pw.equals(u.getPassword())) {
+        	 //if (passwordEncoder.matches(pw, u.getPassword())) {
+        	if (pw.equals(u.getPassword())) {
                 return u;
             } else {
                 System.out.println("Password mismatch for user: " + u.getMail());

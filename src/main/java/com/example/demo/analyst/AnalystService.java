@@ -10,10 +10,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.connexions.Connexion;
-import com.example.demo.analyst.Analyst;
 import com.example.demo.database.Database;
 import com.example.demo.database.DatabaseRepository;
 import com.example.demo.dto.RelationDto;
@@ -41,6 +41,9 @@ public class AnalystService {
     @Autowired
     private TableRepository tableRepository;
     
+    @Autowired
+   	private PasswordEncoder passwordEncoder;
+    
     
     
     @Autowired
@@ -59,6 +62,7 @@ public class AnalystService {
     }
 
     public Analyst createAnalyst(Analyst analyst) {
+    	//analyst.setPassword(passwordEncoder.encode(analyst.getPassword()));
         return analystRepository.save(analyst);
     }
 
