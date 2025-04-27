@@ -204,7 +204,7 @@ public class DynamicQueryService {
             
             // Update request metadata
             request.setSentAt(LocalDate.now());
-            request.setContent(query.toString());
+            //request.setContent(query.toString());
             request.setTableReq(primaryTable);
             requeteRepository.save(request);
             
@@ -375,7 +375,7 @@ public class DynamicQueryService {
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
             Requete req = new Requete();
             req.setSentAt(LocalDate.now());
-            req.setContent(query.toString());
+            //req.setContent(query.toString());
             req.setSender(request.getReq().getSender());
             req.setTable(primaryTable);
             req.setJoinConditions(request.getJoinRequest().getJoinConditions());
@@ -383,6 +383,7 @@ public class DynamicQueryService {
             req.setFilters(request.getFilters());
             req.settables(request.getTableId());
             req.setColumnId(request.getColumnId());
+            req.setGroupByColumns(request.getGroupByColumns());
             requeteRepository.save( req);
             List<Map<String, Object>> jsonResponse = new ArrayList<>();
             for (Tuple tuple : result) {

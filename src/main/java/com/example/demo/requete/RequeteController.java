@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -93,6 +94,17 @@ public class RequeteController {
 	        return ResponseEntity.ok(result);
 	    }
 
+	    @PostMapping("/{scriptId}/execute")
+	    public ResponseEntity<List<List<Map<String, Object>>>> executeScript(@PathVariable Long scriptId) {
+	        try {
+	            List<List<Map<String, Object>>> results = requeteService.executeScriptById(scriptId);
+	            return ResponseEntity.ok(results);
+	        } catch (RuntimeException e) {
+	            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+	        } catch (Exception e) {
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+	        }
+	    }
 	    
 	    
 	    

@@ -30,7 +30,7 @@ public class ReqScript implements Serializable{
     
     private LocalDate createdAt ;
     
-    @OneToMany(mappedBy = "script", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "script")
 	@JsonIgnoreProperties("script")
 	private List<Requete> reqs;
 

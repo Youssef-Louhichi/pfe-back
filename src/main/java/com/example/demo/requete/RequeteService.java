@@ -1,5 +1,6 @@
 package com.example.demo.requete;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,6 +53,7 @@ public class RequeteService {
         	requete.setSentAt(updatedReq.getSentAt());
         	requete.setSender(updatedReq.getSender());
         	requete.setContent(updatedReq.getContent());
+        	requete.setScript(updatedReq.getScript());
             return requeterepository.save(requete);
         }).orElse(null);
     }
@@ -118,6 +120,28 @@ public class RequeteService {
         return queryService.fetchTableDataWithCondition2(req);
     }
 
-
+    public List<List<Map<String, Object>>> executeScriptById(Long scriptId) {
+        // Find the script by ID
+        ReqScript script = scriptrepository.findById(scriptId)
+                .orElseThrow(() -> new RuntimeException("Script not found with ID: " + scriptId));
+        
+        // Get all the requests associated with this script
+        List<Requete> scriptRequests = script.getReqs();
+        
+        if (scriptRequests == null || scriptRequests.isEmpty()) {
+            throw new RuntimeException("No requests found in script with ID: " + scriptId);
+        }
+        
+        // Execute each request and collect results
+        List<List<Map<String, Object>>> allResults = new ArrayList<>();
+        
+        for (Requete req : scriptRequests) {
+            // Execute each request using the existing method
+            List<Map<String, Object>> reqResult = execReqFromDb(req.getId());
+            allResults.add(reqResult);
+        }
+        
+        return allResults;
+    }
 	
 }
