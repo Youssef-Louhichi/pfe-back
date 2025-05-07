@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.requete.Requete;
 import com.example.demo.requete.RequeteRepository;
+import com.example.demo.users.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -23,6 +24,9 @@ public class ReqScriptService {
 	
 	@Autowired
 	private RequeteRepository reqrepo;
+	
+	@Autowired
+	private UserRepository userrepository;
 	
 
     public ReqScript createReqscript(ReqScript script) {
@@ -39,34 +43,25 @@ public class ReqScriptService {
         return scriptrepository.findById(id);
     }
     
-    
-    public void deleteReqscript(Long id) {
-        // Find the script first
-        ReqScript script = scriptrepository.findById(id)
-                         .orElseThrow(() -> new EntityNotFoundException("Script not found with id: " + id));
-        
-        // Get all requests associated with this script
-        List<Requete> relatedRequests = script.getReqs();
-        if (relatedRequests != null && !relatedRequests.isEmpty()) {
-            // Create a new collection to avoid ConcurrentModificationException
-            List<Requete> requestsToUpdate = new ArrayList<>(relatedRequests);
-            
-            for (Requete requete : requestsToUpdate) {
-                rm(requete);
+    public String deleteScript(Long scriptId) {
+        ReqScript script = scriptrepository.findById(scriptId)
+                .orElseThrow(() -> new RuntimeException("Script not found with id: " + scriptId));
+
+        // Remove the script from all associated requetes' scripts list
+        if (script.getReqs() != null) {
+            for (Requete requete : script.getReqs()) {
+                if (requete.getScripts() != null) {
+                    requete.getScripts().remove(script);
+                    reqrepo.save(requete);
+                }
             }
         }
-        
-        // Now delete the script
-        scriptrepository.deleteById(id);
+
+        // Delete the script
+        scriptrepository.delete(script);
+
+        return "Script with id " + scriptId + " successfully deleted";
     }
-    
-    
-    public void rm (Requete req)
-    {
-    	req.setScript(null);
-    	reqrepo.save(req);
-    }
-    
     public ReqScript updateReqscript(Long id, ReqScript updatedReq) {
         return scriptrepository.findById(id).map(requete -> {
         	requete.setName(updatedReq.getName());
@@ -74,5 +69,28 @@ public class ReqScriptService {
         	requete.setReqs(updatedReq.getReqs());
             return scriptrepository.save(requete);
         }).orElse(null);
+    }
+    
+    
+    
+    public List<ReqScript> getScriptsByUser(Long userId) {
+        // Check if the user exists
+        userrepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+
+        List<ReqScript> scripts = scriptrepository.findByUserIdentif(userId);
+        if (scripts.isEmpty()) {
+            throw new EntityNotFoundException("No scripts found for user with id: " + userId);
+        }
+        return scripts;
+    }
+    
+    
+    public List <Requete> getReqs(Long scriptId)
+    {
+    	ReqScript script = scriptrepository.findById(scriptId)
+                .orElseThrow(() -> new RuntimeException("Script not found with id: " + scriptId));
+    	
+    	return script.getReqs();
     }
 }

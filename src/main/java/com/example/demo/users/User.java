@@ -11,6 +11,7 @@ import com.example.demo.creator.Creator;
 
 import com.example.demo.database.Database;
 import com.example.demo.rapport.Rapport;
+import com.example.demo.reqscript.ReqScript;
 import com.example.demo.task.Task;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -38,7 +39,9 @@ public  class User implements UserDetails{
 	
 	private String type;
 
-    
+	 @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+	    @JsonIgnore
+	    private List<ReqScript> scripts;
 	
 	
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
@@ -54,7 +57,19 @@ public  class User implements UserDetails{
 	 @JsonIgnore
 	 private List<Task> receivedTasks;
 	
+	 
+	 
+	 
+	 
 	
+	public List<ReqScript> getScripts() {
+		return scripts;
+	}
+
+	public void setScripts(List<ReqScript> scripts) {
+		this.scripts = scripts;
+	}
+
 	public String getType() {
         return this instanceof Creator ? "Creator" : "Analyst";
     }

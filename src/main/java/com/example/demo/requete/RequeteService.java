@@ -53,7 +53,7 @@ public class RequeteService {
         	requete.setSentAt(updatedReq.getSentAt());
         	requete.setSender(updatedReq.getSender());
         	requete.setContent(updatedReq.getContent());
-        	requete.setScript(updatedReq.getScript());
+        	//requete.setScript(updatedReq.getScript());
             return requeterepository.save(requete);
         }).orElse(null);
     }
@@ -67,53 +67,86 @@ public class RequeteService {
     
     
     
-    public String addRequeteToScript(Long scriptId, Long requeteId) {
-        ReqScript script = scriptrepository.findById(scriptId)
-                .orElseThrow(() -> new RuntimeException("Script not found with id: " + scriptId));
-
+    public String addRequeteToScripts(List<Long> scriptIds, Long requeteId) {
         Requete requete = requeterepository.findById(requeteId)
                 .orElseThrow(() -> new RuntimeException("Requete not found with id: " + requeteId));
 
-        
-        requete.setScript(script);
-
-        
-        if (!script.getReqs().contains(requete)) {
-            script.getReqs().add(requete);
+        if (requete.getScripts() == null) {
+            requete.setScripts(new java.util.ArrayList<>());
         }
 
-  
-        requeterepository.save(requete);
+        String result = " ";
+        boolean anyAdded = false;
 
-        return "Requete with id " + requeteId + " successfully added to script with id " + scriptId;
+        for (Long scriptId : scriptIds) {
+            ReqScript script = scriptrepository.findById(scriptId)
+                    .orElseThrow(() -> new RuntimeException("Script not found with id: " + scriptId));
+
+            if (script.getReqs() == null) {
+                script.setReqs(new java.util.ArrayList<>());
+            }
+
+            boolean relationshipExists = requete.getScripts().stream()
+                    .anyMatch(s -> s.getId().equals(scriptId));
+
+            if (!relationshipExists) {
+                requete.getScripts().add(script);
+                //script.getReqs().add(requete);
+                anyAdded = true;
+                result = result + "added";
+                System.out.println(" oooki ");
+            } else {
+               result = result + "not added";
+                System.out.println(" already in script ");
+            }
+        }
+
+        if (anyAdded) {
+            requeterepository.save(requete);
+            scriptrepository.saveAll(scriptrepository.findAllById(scriptIds));
+        }
+
+        if (result.length() > 0) {
+            return result;
+        } else {
+            return "No scripts were updated";
+        }
     }
-    
-    
-    
-    public String removeRequeteFromScript(Long scriptId, Long requeteId) {
-        // 1. Check if the script exists
-        ReqScript script = scriptrepository.findById(scriptId)
-            .orElseThrow(() -> new RuntimeException("Script not found"));
 
-  
+    public String removeRequeteFromScripts(List<Long> scriptIds, Long requeteId) {
         Requete requete = requeterepository.findById(requeteId)
-            .orElseThrow(() -> new RuntimeException("Requete not found"));
+                .orElseThrow(() -> new RuntimeException("Requete not found with id: " + requeteId));
 
-        
-        if (!script.getReqs().contains(requete)) {
-            throw new RuntimeException("Requete does not belong to the script");
+        List<ReqScript> scripts = scriptrepository.findAllById(scriptIds);
+        if (scripts.size() != scriptIds.size()) {
+            throw new RuntimeException("One or more scripts not found");
         }
 
-       
-        //script.getReqs().remove(requete);
-        requete.setScript(null); 
-        scriptrepository.save(script);
-        requeterepository.save(requete);
+        String result = " ";
+        boolean anyRemoved = false;
 
-        return "Requete removed from script successfully";
+        for (ReqScript script : scripts) {
+            if (script.getReqs().contains(requete) && requete.getScripts().contains(script)) {
+                script.getReqs().remove(requete);
+                requete.getScripts().remove(script);
+                anyRemoved = true;
+                result = result+ "removed";
+            } else {
+                result = result+ "not removed";
+            }
+        }
+
+        if (anyRemoved) {
+            requeterepository.save(requete);
+            scriptrepository.saveAll(scripts);
+        }
+
+        if (result.length() > 0) {
+            return result;
+        } else {
+            return "No scripts were updated";
+        }
     }
-    
-    
     
     public List<Map<String, Object>> execReqFromDb(Long id) {
         Requete req = getReqById(id).orElseThrow(() -> new RuntimeException("Requete not found with id: " + id));
@@ -143,5 +176,7 @@ public class RequeteService {
         
         return allResults;
     }
+    
+    
 	
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.QueryRequestDTO;
@@ -71,17 +72,19 @@ public class RequeteController {
 	    
 	    
 	  
-	    @PostMapping("/{scriptId}/add-requete/{requeteId}")
-	    public ResponseEntity<String> addRequeteToScript(
-	            @PathVariable Long scriptId,
+	    @PostMapping("/add-requete/{requeteId}")
+	    public ResponseEntity<String> addRequeteToScripts(
+	            @RequestParam List<Long> scriptIds,
 	            @PathVariable Long requeteId) {
-	        String message = requeteService.addRequeteToScript(scriptId, requeteId);
+	        String message = requeteService.addRequeteToScripts(scriptIds, requeteId);
 	        return ResponseEntity.ok(message);
 	    }
 
-	    @PostMapping("/{scriptId}/requete/{requeteId}")
-	    public ResponseEntity<String> removeRequeteFromScript(@PathVariable Long scriptId, @PathVariable Long requeteId) {
-	        String result = requeteService.removeRequeteFromScript(scriptId, requeteId);
+	    @PostMapping("/remove-requete/{requeteId}")
+	    public ResponseEntity<String> removeRequeteFromScripts(
+	            @RequestParam List<Long> scriptIds,
+	            @PathVariable Long requeteId) {
+	        String result = requeteService.removeRequeteFromScripts(scriptIds, requeteId);
 	        return ResponseEntity.ok(result);
 	    }
 	    
@@ -105,6 +108,8 @@ public class RequeteController {
 	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 	        }
 	    }
+	    
+	    
 	    
 	    
 	    

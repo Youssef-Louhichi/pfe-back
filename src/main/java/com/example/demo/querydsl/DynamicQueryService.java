@@ -15,7 +15,7 @@ import com.example.demo.condition.JoinCondition;
 import com.example.demo.tablecolumns.ColumnRepository;
 
 import com.example.demo.tablecolumns.TabColumn;
-
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import com.example.demo.connexions.DatabaseType;
 import com.example.demo.dto.DeleteRequestDTO;
@@ -27,6 +27,7 @@ import com.example.demo.tablecolumns.ColumnRepository;
 import com.example.demo.tablecolumns.TabColumn;
 
 import com.example.demo.dto.UpdateRequestDTO;
+import com.example.demo.having.HavingCondition;
 import com.example.demo.requete.Requete;
 import com.example.demo.requete.RequeteRepository;
 import com.example.demo.tablecolumns.ColumnRepository;
@@ -34,6 +35,7 @@ import com.example.demo.tablecolumns.TabColumn;
 
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.querydsl.core.Tuple;
 import com.querydsl.sql.RelationalPath;
 import com.querydsl.sql.RelationalPathBase;
@@ -41,14 +43,18 @@ import com.querydsl.sql.SQLExpressions;
 import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.SimpleExpression;
 import com.querydsl.core.types.Expression;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -203,8 +209,10 @@ public class DynamicQueryService {
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
             
             // Update request metadata
-            request.setSentAt(LocalDate.now());
+            request.setSentAt(LocalDateTime.now());
+            System.out.println(LocalDateTime.now());     
             //request.setContent(query.toString());
+        
             request.setTableReq(primaryTable);
             requeteRepository.save(request);
             
@@ -228,6 +236,7 @@ public class DynamicQueryService {
     
 
     public List<Map<String, Object>> fetchTableDataWithCondition(QueryRequestDTO request) {
+    	System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
         // Validate request
         if (request.getTableId() == null || request.getTableId().isEmpty()) {
             throw new IllegalArgumentException("At least one table ID must be provided");
@@ -368,14 +377,104 @@ public class DynamicQueryService {
                 }
             }
             
+         // Add having conditions
+            if (request.getHavingConditions() != null && !request.getHavingConditions().isEmpty()) {
+                for (HavingCondition having : request.getHavingConditions()) {
+                    TabColumn column = columnRepository.findById(having.getColumnId()).orElse(null);
+                    if (column == null) continue;
+
+                    RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+                    if (tablePath == null) continue;
+
+                    Expression<?> colExpr = Expressions.path(Object.class, tablePath, column.getName());
+                    Expression<? extends Number> aggExpr;
+
+                    switch (having.getFunction().toLowerCase()) {
+                        case "count":
+                            aggExpr = Expressions.numberTemplate(Long.class, "count({0})", colExpr);
+                            break;
+                        case "sum":
+                            aggExpr = Expressions.numberTemplate(Double.class, "sum({0})", colExpr);
+                            break;
+                        case "avg":
+                            aggExpr = Expressions.numberTemplate(Double.class, "avg({0})", colExpr);
+                            break;
+                        case "min":
+                            aggExpr = Expressions.numberTemplate(Double.class, "min({0})", colExpr);
+                            break;
+                        case "max":
+                            aggExpr = Expressions.numberTemplate(Double.class, "max({0})", colExpr);
+                            break;
+                        default:
+                            continue;
+                    }
+                    
+                    
+                    if (having.isTest()) {
+                        Object value = having.getValue();
+                        Requete subqueryRequete;
+                        if (value instanceof LinkedHashMap) {
+                            ObjectMapper mapper = new ObjectMapper();
+                            mapper.registerModule(new JavaTimeModule()); // Add this
+                            subqueryRequete = mapper.convertValue(value, Requete.class);
+                        } else if (value instanceof Requete) {
+                            subqueryRequete = (Requete) value;
+                        } else {
+                            throw new IllegalArgumentException("Unsupported value type: " + value.getClass().getName());
+                        }
+                        // Create a subquery using the Requete object
+                        SQLQuery<?> subquery = createSubquery(queryFactory, subqueryRequete, tablePaths, tableIdMap);
+                        
+                        // Apply the having condition with the subquery
+                        applyHavingWithSubquery(query, having, aggExpr, subquery);
+                    } else {
+                    		System.out.println("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+                    // Apply having condition using the correct type
+                    Number value = (Number) having.getValue();
+
+                    // Determine the specific number type based on the aggregation function
+                    switch (having.getFunction().toLowerCase()) {
+                        case "count":
+                            // For count, we work with Long values
+                            Long longValue = value.longValue();
+                            NumberExpression<Long> longExpr = (NumberExpression<Long>) aggExpr;
+                            
+                            switch (having.getOperator()) {
+                                case ">": query.having(longExpr.gt(longValue)); break;
+                                case "<": query.having(longExpr.lt(longValue)); break;
+                                case "=": query.having(longExpr.eq(longValue)); break;
+                                case ">=": query.having(longExpr.goe(longValue)); break;
+                                case "<=": query.having(longExpr.loe(longValue)); break;
+                            }
+                            break;
+                            
+                        case "sum":
+                        case "avg":
+                            // For sum and avg, we work with Double values
+                            Double doubleValue = value.doubleValue();
+                            NumberExpression<Double> doubleExpr = (NumberExpression<Double>) aggExpr;
+                            
+                            switch (having.getOperator()) {
+                                case ">": query.having(doubleExpr.gt(doubleValue)); break;
+                                case "<": query.having(doubleExpr.lt(doubleValue)); break;
+                                case "=": query.having(doubleExpr.eq(doubleValue)); break;
+                                case ">=": query.having(doubleExpr.goe(doubleValue)); break;
+                                case "<=": query.having(doubleExpr.loe(doubleValue)); break;
+                            }
+                            break;
+                    }
+                } }
+            }
+
+            
             System.out.println("Final query: " + query.toString());
             
             // Execute query and process results
             List<Tuple> result = query.fetch();
             System.out.println("Query executed successfully. Rows fetched: " + result.size());
             Requete req = new Requete();
-            req.setSentAt(LocalDate.now());
-            //req.setContent(query.toString());
+            req.setSentAt(LocalDateTime.now());
+           // req.setContent(query.toString());
             req.setSender(request.getReq().getSender());
             req.setTable(primaryTable);
             req.setJoinConditions(request.getJoinRequest().getJoinConditions());
@@ -403,6 +502,195 @@ public class DynamicQueryService {
         }
     }
     
+    
+    private <T> SQLQuery<T> createSubquery(SQLQueryFactory queryFactory, Requete subqueryRequete, 
+            Map<Long, RelationalPath<?>> tablePaths, 
+            Map<Long, DbTable> tableIdMap) {
+// Get the primary table for the subquery
+Long primaryTableId = subqueryRequete.gettables().get(0);
+RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
+
+// Create subquery select expressions
+List<Expression<?>> selectExpressions = new ArrayList<>();
+
+// Handle columns
+if (subqueryRequete.getColumnId() != null && !subqueryRequete.getColumnId().isEmpty()) {
+for (Long columnId : subqueryRequete.getColumnId()) {
+TabColumn column = columnRepository.findById(columnId).orElse(null);
+if (column != null) {
+RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+if (tablePath != null) {
+selectExpressions.add(Expressions.path(Object.class, tablePath, column.getName()));
+}
+}
+}
+}
+
+// Handle aggregations
+if (subqueryRequete.getAggregation() != null && !subqueryRequete.getAggregation().isEmpty()) {
+for (AggregationRequest agg : subqueryRequete.getAggregation()) {
+TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+if (column != null) {
+RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+if (tablePath != null) {
+Expression<?> colExpr = Expressions.path(Object.class, tablePath, column.getName());
+
+switch (agg.getfunctionagg().toLowerCase()) {
+case "count":
+   selectExpressions.add(Expressions.numberTemplate(Long.class, "count({0})", colExpr));
+   break;
+case "sum":
+   selectExpressions.add(Expressions.numberTemplate(Double.class, "sum({0})", colExpr));
+   break;
+case "avg":
+   selectExpressions.add(Expressions.numberTemplate(Double.class, "avg({0})", colExpr));
+   break;
+case "min":
+   selectExpressions.add(Expressions.numberTemplate(Double.class, "min({0})", colExpr));
+   break;
+case "max":
+   selectExpressions.add(Expressions.numberTemplate(Double.class, "max({0})", colExpr));
+   break;
+}
+}
+}
+}
+}
+
+// If no expressions, add a default one (usually the first column)
+if (selectExpressions.isEmpty()) {
+selectExpressions.add(Expressions.constant(1)); // Fallback to SELECT 1
+}
+
+// Start building subquery
+SQLQuery<T> subquery = (SQLQuery<T>) queryFactory.select(selectExpressions.toArray(new Expression<?>[0]))
+                        .from(primaryPath);
+
+// Add joins if present
+if (subqueryRequete.getJoinConditions() != null && !subqueryRequete.getJoinConditions().isEmpty()) {
+addJoinsFromList(subquery, tablePaths, subqueryRequete.getJoinConditions());
+}
+
+// Add filters if present
+if (subqueryRequete.getFilters() != null && !subqueryRequete.getFilters().isEmpty()) {
+List<DbTable> tables = new ArrayList<>();
+for (Long tableId : subqueryRequete.gettables()) {
+tables.add(tableIdMap.get(tableId));
+}
+addDynamicFilters(subquery, subqueryRequete.getFilters(), tables);
+}
+
+// Add group by if present
+if (subqueryRequete.getGroupByColumns() != null && !subqueryRequete.getGroupByColumns().isEmpty()) {
+List<Expression<?>> groupByExpressions = new ArrayList<>();
+for (Long groupByColumnId : subqueryRequete.getGroupByColumns()) {
+TabColumn groupByColumn = columnRepository.findById(groupByColumnId).orElse(null);
+if (groupByColumn != null) {
+RelationalPath<?> tablePath = tablePaths.get(groupByColumn.getTable().getId());
+if (tablePath != null) {
+groupByExpressions.add(Expressions.path(Object.class, tablePath, groupByColumn.getName()));
+}
+}
+}
+if (!groupByExpressions.isEmpty()) {
+subquery.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
+}
+}
+
+return subquery;
+}
+
+/**
+* Apply a having condition with a subquery
+*/
+private <T extends Number> void applyHavingWithSubquery(SQLQuery<?> query, 
+                             HavingCondition having, 
+                             Expression<T> aggExpr, 
+                             SQLQuery<?> subquery) {
+// Default to handling a single value result if no specific comparator provided
+String comparator = having.getSubqueryComparator();
+if (comparator == null) {
+comparator = "="; // Default comparator
+}
+
+switch (comparator.toUpperCase()) {
+case "IN":
+query.having(Expressions.booleanTemplate("{0} IN ({1})", aggExpr, subquery));
+break;
+case "NOT IN":
+query.having(Expressions.booleanTemplate("{0} NOT IN ({1})", aggExpr, subquery));
+break;
+case "=":
+case "==":
+query.having(Expressions.booleanTemplate("{0} = ({1})", aggExpr, subquery));
+break;
+case ">":
+query.having(Expressions.booleanTemplate("{0} > ({1})", aggExpr, subquery));
+break;
+case "<":
+query.having(Expressions.booleanTemplate("{0} < ({1})", aggExpr, subquery));
+break;
+case ">=":
+query.having(Expressions.booleanTemplate("{0} >= ({1})", aggExpr, subquery));
+break;
+case "<=":
+query.having(Expressions.booleanTemplate("{0} <= ({1})", aggExpr, subquery));
+break;
+case "ANY":
+case "SOME":
+// For operators that need a comparison operator specified
+String op = having.getOperator();
+if (op == null || op.isEmpty()) {
+op = "="; // Default operator
+}
+query.having(Expressions.booleanTemplate("{0} " + op + " ANY ({1})", aggExpr, subquery));
+break;
+case "ALL":
+// For ALL, we also need a comparison operator
+String opAll = having.getOperator();
+if (opAll == null || opAll.isEmpty()) {
+opAll = "="; // Default operator
+}
+query.having(Expressions.booleanTemplate("{0} " + opAll + " ALL ({1})", aggExpr, subquery));
+break;
+default:
+// Default to = for unknown comparators
+query.having(Expressions.booleanTemplate("{0} = ({1})", aggExpr, subquery));
+}
+}
+
+
+/*
+private <T extends Number> void applySimpleHavingCondition(SQLQuery<?> query, 
+                                String operator, 
+                                NumberExpression<T> expr, 
+                                T value) {
+switch (operator) {
+case ">": 
+query.having(expr.gt(value));
+break;
+case "<": 
+query.having(expr.lt(value));
+break;
+case "=": 
+query.having(expr.eq(value));
+break;
+case ">=": 
+query.having(expr.goe(value));
+break;
+case "<=": 
+query.having(expr.loe(value));
+break;
+case "!=":
+case "<>":
+query.having(expr.ne(value));
+break;
+default:
+// Default to equality for unknown operators
+query.having(expr.eq(value));
+}
+}
+  */  
     
     private void addJoinsFromList(SQLQuery<?> query, Map<Long, RelationalPath<?>> tablePaths, 
             List<JoinCondition> joinConditions) {

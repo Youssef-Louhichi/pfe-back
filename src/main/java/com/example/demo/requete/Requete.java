@@ -2,7 +2,9 @@ package com.example.demo.requete;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
@@ -19,6 +21,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -32,7 +36,7 @@ public class Requete implements Serializable{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private LocalDate SentAt;
+    private LocalDateTime SentAt;
     
     @ManyToOne
 	@JoinColumn(name = "sender_id", nullable = false)
@@ -69,10 +73,14 @@ public class Requete implements Serializable{
     
     
     
-    @ManyToOne
-    @JoinColumn(name = "script_id", nullable = true)
+    @ManyToMany
+    @JoinTable(
+        name = "requete_reqscript",
+        joinColumns = @JoinColumn(name = "requete_id"),
+        inverseJoinColumns = @JoinColumn(name = "reqscript_id")
+    )
     @JsonIgnoreProperties("reqs")
-    private ReqScript script;
+    private List<ReqScript> scripts;
     
     
 
@@ -127,12 +135,14 @@ public class Requete implements Serializable{
 		this.tableReq = tableReq;
 	}
 
-	public ReqScript getScript() {
-		return script;
+
+
+	public List<ReqScript> getScripts() {
+		return scripts;
 	}
 
-	public void setScript(ReqScript script) {
-		this.script = script;
+	public void setScripts(List<ReqScript> scripts) {
+		this.scripts = scripts;
 	}
 
 	public DbTable getTable() {
@@ -159,11 +169,11 @@ public class Requete implements Serializable{
 		this.id = id;
 	}
 
-	public LocalDate getSentAt() {
+	public LocalDateTime getSentAt() {
 		return SentAt;
 	}
 
-	public void setSentAt(LocalDate sentAt) {
+	public void setSentAt(LocalDateTime sentAt) {
 		SentAt = sentAt;
 	}
 
@@ -184,7 +194,7 @@ public class Requete implements Serializable{
     }
     
 
-	public Requete(LocalDate sentAt, User sender,String content) {
+	public Requete(LocalDateTime sentAt, User sender,String content) {
 		
 		SentAt = sentAt;
 		this.sender = sender;
@@ -195,6 +205,20 @@ public class Requete implements Serializable{
 		
 	}
     
+	
+	
+	@Override
+	public boolean equals(Object o) {
+	    if (this == o) return true;
+	    if (o == null || getClass() != o.getClass()) return false;
+	    Requete requete = (Requete) o;
+	    return Objects.equals(id, requete.id);
+	}
+
+	@Override
+	public int hashCode() {
+	    return Objects.hash(id);
+	}
     
 
 }

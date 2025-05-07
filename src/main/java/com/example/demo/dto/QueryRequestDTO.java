@@ -4,6 +4,7 @@
 
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
+import com.example.demo.having.HavingCondition;
 import com.example.demo.requete.Requete;
 	
 	public class QueryRequestDTO {
@@ -18,8 +19,20 @@ import com.example.demo.requete.Requete;
 		private List<Long> groupByColumns;
 		
 		 private List<AggregationRequest> aggregations; 
+		 private List<HavingCondition> HavingConditions;
 		 
-		 public JoinRequestDTO getJoinRequest() {
+		 
+		 
+		 
+		 public List<HavingCondition> getHavingConditions() {
+			return HavingConditions;
+		}
+
+		public void setHavingConditions(List<HavingCondition> havingConditions) {
+			HavingConditions = havingConditions;
+		}
+
+		public JoinRequestDTO getJoinRequest() {
 		        return joinRequest;
 		    }
 		    

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.requete.Requete;
+
 
 
 
@@ -56,8 +58,19 @@ public class ReqScriptController {
 	    
 	    @DeleteMapping("/{id}")
 	    public void delete(@PathVariable Long id) {
-	    	scriptService.deleteReqscript(id);
+	    	scriptService.deleteScript(id);
 	    }
 	    
+	    @GetMapping("/{userId}/scripts")
+	    public List<ReqScript> getScriptsByUser(@PathVariable Long userId) {
+	        return scriptService.getScriptsByUser(userId);
+	    }
+	    
+	    
 
+	    @GetMapping("/{id}/requetes")
+	    public List<Requete> getReqs(@PathVariable Long id)
+	    {
+	    	return scriptService.getReqs(id);
+	    }
 }
