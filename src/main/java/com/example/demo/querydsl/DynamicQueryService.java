@@ -46,6 +46,7 @@ import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.types.dsl.SimpleExpression;
 import com.querydsl.core.types.Expression;
+import com.querydsl.core.types.Ops;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -387,7 +388,12 @@ public class DynamicQueryService {
                     if (tablePath == null) continue;
 
                     Expression<?> colExpr = Expressions.path(Object.class, tablePath, column.getName());
-                    Expression<? extends Number> aggExpr;
+                    Expression<? extends Number> aggExpr = null;
+                    
+                    if (having.getFunction() == null || having.getFunction().trim().isEmpty()) {
+                        // No aggregation function - use the column directly
+                        aggExpr = (Expression<? extends Number>) colExpr;
+                    } else {
 
                     switch (having.getFunction().toLowerCase()) {
                         case "count":
@@ -407,6 +413,7 @@ public class DynamicQueryService {
                             break;
                         default:
                             continue;
+                    }
                     }
                     
                     
@@ -431,7 +438,14 @@ public class DynamicQueryService {
                     		System.out.println("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
                     // Apply having condition using the correct type
                     Number value = (Number) having.getValue();
-
+                    
+                    if (having.getFunction() == null || having.getFunction().trim().isEmpty()) {
+                    	
+                    	 applySimpleHavingCondition(query, colExpr, having.getOperator(), value);
+                    	
+                    }
+                    else 
+                    {
                     // Determine the specific number type based on the aggregation function
                     switch (having.getFunction().toLowerCase()) {
                         case "count":
@@ -462,7 +476,7 @@ public class DynamicQueryService {
                                 case "<=": query.having(doubleExpr.loe(doubleValue)); break;
                             }
                             break;
-                    }
+                    } }
                 } }
             }
 
@@ -503,6 +517,43 @@ public class DynamicQueryService {
     }
     
     
+   
+    
+    private void applySimpleHavingCondition(SQLQuery<Tuple> query, Expression<?> colExpr, String operator, Number value) {
+        // Determine the data type of the column expression
+        // Check if the value is an integer type first
+        if (value instanceof Integer || value instanceof Long) {
+            // For integer columns, work with Long values
+            Long longValue = value.longValue();
+            NumberExpression<Long> numExpr = Expressions.numberTemplate(Long.class, "{0}", colExpr);
+            
+            switch (operator) {
+                case ">": query.having(numExpr.gt(longValue)); break;
+                case "<": query.having(numExpr.lt(longValue)); break;
+                case "=": query.having(numExpr.eq(longValue)); break;
+                case ">=": query.having(numExpr.goe(longValue)); break;
+                case "<=": query.having(numExpr.loe(longValue)); break;
+                case "!=": query.having(numExpr.ne(longValue)); break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        } else {
+            // For decimal columns, work with Double values
+            Double doubleValue = value.doubleValue();
+            NumberExpression<Double> numExpr = Expressions.numberTemplate(Double.class, "{0}", colExpr);
+            
+            switch (operator) {
+                case ">": query.having(numExpr.gt(doubleValue)); break;
+                case "<": query.having(numExpr.lt(doubleValue)); break;
+                case "=": query.having(numExpr.eq(doubleValue)); break;
+                case ">=": query.having(numExpr.goe(doubleValue)); break;
+                case "<=": query.having(numExpr.loe(doubleValue)); break;
+                case "!=": query.having(numExpr.ne(doubleValue)); break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        }
+    }
     private <T> SQLQuery<T> createSubquery(SQLQueryFactory queryFactory, Requete subqueryRequete, 
             Map<Long, RelationalPath<?>> tablePaths, 
             Map<Long, DbTable> tableIdMap) {
@@ -600,9 +651,7 @@ subquery.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
 return subquery;
 }
 
-/**
-* Apply a having condition with a subquery
-*/
+
 private <T extends Number> void applyHavingWithSubquery(SQLQuery<?> query, 
                              HavingCondition having, 
                              Expression<T> aggExpr, 
