@@ -134,5 +134,18 @@ public class Database implements Serializable {
     public void setUpdatedAt(LocalDate updatedAt) {
         this.updatedAt = updatedAt;
     }
+    
+    
+    public String getJdbcUrl() {
+        switch (this.dbtype) {
+            case MySQL:
+                return "jdbc:mysql://" + this.connexion.getHost() + ":" + this.connexion.getPort() + "/" + this.name;
+            case Oracle:
+                return "jdbc:oracle:thin:@" + connexion.getHost() + ":" + connexion.getPort() + ":" + name;
+            default:
+                throw new UnsupportedOperationException("Unsupported DB type");
+        }
+    }
+
 }
 

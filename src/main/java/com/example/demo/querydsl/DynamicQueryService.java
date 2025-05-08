@@ -18,6 +18,8 @@ import com.example.demo.tablecolumns.TabColumn;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import com.example.demo.connexions.DatabaseType;
+import com.example.demo.database.Database;
+import com.example.demo.database.DatabaseRepository;
 import com.example.demo.dto.DeleteRequestDTO;
 import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.JoinRequestDTO;
@@ -35,6 +37,8 @@ import com.example.demo.tablecolumns.TabColumn;
 
 import com.example.demo.tables.DbTable;
 import com.example.demo.tables.TableRepository;
+import com.example.demo.users.User;
+import com.example.demo.users.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.querydsl.core.Tuple;
 import com.querydsl.sql.RelationalPath;
@@ -75,6 +79,13 @@ public class DynamicQueryService {
     
     @Autowired
     private RequeteRepository requeteRepository ;
+    
+    @Autowired
+    private DatabaseRepository databaseRepository ;
+    
+    @Autowired
+    private UserRepository userRepository ;
+    
     
     public DynamicQueryService(QueryDSLFactory queryDSLFactory) {
         this.queryDSLFactory = queryDSLFactory;
@@ -1521,4 +1532,45 @@ if (aggregateExpr != null) {
             }
         }
     }
+    
+    
+    public List<Map<String, Object>> executeStringQuery(String query, Long dbid,Long senderId) {
+    	
+    	  Database db = databaseRepository.findById(dbid)
+                  .orElseThrow(() -> new RuntimeException("Db not found with ID: " + dbid));
+    	  
+    	  User u = userRepository.findById(senderId).orElseThrow(() -> new RuntimeException("User not found with ID: " + senderId));
+    	
+        try (Connection conn = DriverManager.getConnection(db.getJdbcUrl(), db.getConnexion().getUsername(), db.getConnexion().getPassword());
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(query)) {
+
+            List<Map<String, Object>> resultList = new ArrayList<>();
+            java.sql.ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+
+            while (rs.next()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                for (int i = 1; i <= columnCount; i++) {
+                    row.put(rsmd.getColumnLabel(i), rs.getObject(i));
+                }
+                resultList.add(row);
+            }
+            
+            Requete r = new Requete();
+            r.setContent(query);
+            r.setSender(u);
+            r.setSentAt(LocalDateTime.now());
+            
+            //this.requeteRepository.save(r);
+
+            return resultList;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error executing query: " + query, e);
+        }
+    }
+
+    
+    
 }

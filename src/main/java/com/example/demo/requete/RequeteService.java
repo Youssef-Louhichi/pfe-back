@@ -1,16 +1,22 @@
 package com.example.demo.requete;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.condition.FilterCondition;
+import com.example.demo.condition.JoinCondition;
 import com.example.demo.querydsl.DynamicQueryService;
 import com.example.demo.reqscript.ReqScript;
 import com.example.demo.reqscript.ReqScriptRepository;
+import com.example.demo.tablecolumns.ColumnRepository;
+import com.example.demo.tables.TableRepository;
 
 
 
@@ -27,6 +33,13 @@ public class RequeteService {
 	
 	@Autowired
 	private DynamicQueryService queryService;
+	
+	
+	@Autowired
+    private ColumnRepository columnRepository;
+    
+    @Autowired
+    private TableRepository tableRepository;
 	
 	
     public Requete createReq(Requete requete) {
@@ -176,6 +189,7 @@ public class RequeteService {
         
         return allResults;
     }
+    
     
     
 	

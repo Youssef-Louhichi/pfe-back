@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.dto.DeleteRequestDTO;
 import com.example.demo.dto.InsertRequestDTO;
 import com.example.demo.dto.QueryRequestDTO;
+import com.example.demo.dto.StringQueryDTO;
 import com.example.demo.dto.UpdateRequestDTO;
 
 
@@ -78,6 +79,18 @@ public class QueryController {
         response.put("rowsdeleted", rowsAffected);
         
         return ResponseEntity.ok(response);
+    }
+    
+    @PostMapping("/fetch-string")
+    public ResponseEntity<List<Map<String, Object>>> fetchTableDataString(@RequestBody StringQueryDTO payload) {
+    	
+    
+    	List<Map<String, Object>> result = dynamicQueryService.executeStringQuery(payload.getQuery(),payload.getDbId(),payload.getSenderId());
+                
+
+       
+
+        return ResponseEntity.ok(result);
     }
   
 }
