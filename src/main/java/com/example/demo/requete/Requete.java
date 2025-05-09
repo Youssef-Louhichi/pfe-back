@@ -9,6 +9,7 @@ import java.util.Objects;
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
+import com.example.demo.having.HavingCondition;
 import com.example.demo.rapport.Rapport;
 import com.example.demo.reqscript.ReqScript;
 import com.example.demo.tables.DbTable;
@@ -52,6 +53,11 @@ public class Requete implements Serializable{
     @ElementCollection
     private List<AggregationRequest> aggregation;
     
+    @ElementCollection
+    private List<HavingCondition> havings;
+    
+    
+    
     private List<Long> tables;
     
     private List<Long> ColumnId;
@@ -65,7 +71,15 @@ public class Requete implements Serializable{
     
     
     
-    @ManyToOne
+    public List<HavingCondition> getHavings() {
+		return havings;
+	}
+
+	public void setHavings(List<HavingCondition> havings) {
+		this.havings = havings;
+	}
+
+	@ManyToOne
    	@JoinColumn(name = "table_id", nullable = false)
    	private DbTable tableReq;
     

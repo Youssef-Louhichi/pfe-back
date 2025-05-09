@@ -92,160 +92,7 @@ public class DynamicQueryService {
         this.queryDSLFactory = queryDSLFactory;
     }
     
-    
-    public List<Map<String, Object>> fetchTableDataWithCondition2(Requete request) {
-        // Validate request
-        if (request.gettables() == null || request.gettables().isEmpty()) {
-            throw new IllegalArgumentException("At least one table ID must be provided");
-        }
-        
-        // Get primary table (first in the list)
-        Long primaryTableId = request.gettables().get(0);
-        DbTable primaryTable = tableRepository.findById(primaryTableId)
-                .orElseThrow(() -> new RuntimeException("Primary table not found with ID: " + primaryTableId));
-        
-        // Get database connection details
-        DatabaseType dbType = primaryTable.getDatabase().getDbtype();
-        String dbUrl, driver;
-        
-        if (dbType == DatabaseType.MySQL) {
-            dbUrl = "jdbc:mysql://" + primaryTable.getDatabase().getConnexion().getHost() + ":" 
-                  + primaryTable.getDatabase().getConnexion().getPort() + "/" 
-                  + primaryTable.getDatabase().getName();
-            driver = "com.mysql.cj.jdbc.Driver";
-        } else if (dbType == DatabaseType.Oracle) {
-            dbUrl = "jdbc:oracle:thin:@" + primaryTable.getDatabase().getConnexion().getHost() + ":" 
-                  + primaryTable.getDatabase().getConnexion().getPort() + ":" 
-                  + primaryTable.getDatabase().getName();
-            driver = "oracle.jdbc.OracleDriver";
-        } else {
-            throw new RuntimeException("Unsupported database type: " + dbType);
-        }
-
-        String username = primaryTable.getDatabase().getConnexion().getUsername();
-        String password = primaryTable.getDatabase().getConnexion().getPassword();
-        
-        SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
-
-        try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
-            // Get list of requested tables and build a mapping
-            List<DbTable> tables = new ArrayList<>();
-            Map<Long, DbTable> tableIdMap = new HashMap<>();
-            
-            for (Long tableId : request.gettables()) {
-                DbTable table = tableRepository.findById(tableId)
-                        .orElseThrow(() -> new RuntimeException("Table not found with ID: " + tableId));
-                tables.add(table);
-                tableIdMap.put(tableId, table);
-            }
-
-            // Create path objects for all tables - use actual table names
-            Map<Long, RelationalPath<?>> tablePaths = new HashMap<>();
-            for (DbTable table : tables) {
-                // Use the actual table name for the path
-                RelationalPathBase<?> path = new RelationalPathBase<>(
-                        Object.class, 
-                        table.getName(),  
-                        table.getName(), 
-                        table.getName()             
-                    );
-                tablePaths.put(table.getId(), path);
-                System.out.println("Added table path: " + table.getName() + " for ID: " + table.getId());
-            }
-            
-            // Get columns with their tables
-            List<TabColumn> columns = columnRepository.findAllById(request.getColumnId());
-            
-            // Prepare select expressions and alias mapping
-            List<Expression<?>> selectExpressions = new ArrayList<>();
-            Map<String, Expression<?>> aliasMapping = new HashMap<>();
-
-            for (TabColumn column : columns) {
-                String tableName = column.getTable().getName();
-                String columnName = column.getName();
-                
-                // Use template expressions to create qualified column references
-                Expression<?> colExpr = Expressions.template(Object.class, "{0}.{1}", 
-                    Expressions.template(Object.class, tableName),
-                    Expressions.template(Object.class, columnName)
-                );
-                
-                // Create alias for column
-                String columnAlias = tableName + "_" + columnName;
-                Expression<?> aliasedExpr = Expressions.as(colExpr, columnAlias);
-                
-                selectExpressions.add(aliasedExpr);
-                aliasMapping.put(columnAlias, aliasedExpr);
-            }
-
-            // Add aggregations
-            addAggregations2(request, selectExpressions, aliasMapping, tables);
-
-            if (selectExpressions.isEmpty()) {
-                throw new IllegalArgumentException("No columns selected for query");
-            }
-
-            // Start building query with primary table
-            RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
-            SQLQuery<Tuple> query = queryFactory.select(selectExpressions.toArray(new Expression<?>[0])).from(primaryPath);
-            
-            // Check if there are join conditions
-            if (request.getJoinConditions() != null && !request.getJoinConditions().isEmpty()) {
-                addJoinsFromList(query, tablePaths, request.getJoinConditions());
-            }
-            
-            // Add filters
-            addDynamicFilters(query, request.getFilters(), tables);
-            
-            // Add group by
-            if (request.getGroupByColumns() != null && !request.getGroupByColumns().isEmpty()) {
-                List<Expression<?>> groupByExpressions = new ArrayList<>();
-                for (Long groupByColumnId : request.getGroupByColumns()) {
-                    TabColumn groupByColumn = columnRepository.findById(groupByColumnId).orElse(null);
-                    if (groupByColumn != null) {
-                        RelationalPath<?> tablePath = tablePaths.get(groupByColumn.getTable().getId());
-                        if (tablePath != null) {
-                            groupByExpressions.add(Expressions.path(Object.class, tablePath, groupByColumn.getName()));
-                        }
-                    }
-                }
-                if (!groupByExpressions.isEmpty()) {
-                    query.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
-                }
-            }
-            
-            System.out.println("Final query: " + query.toString());
-            
-            // Execute query and process results
-            List<Tuple> result = query.fetch();
-            System.out.println("Query executed successfully. Rows fetched: " + result.size());
-            
-            // Update request metadata
-            request.setSentAt(LocalDateTime.now());
-            System.out.println(LocalDateTime.now());     
-            //request.setContent(query.toString());
-        
-            request.setTableReq(primaryTable);
-            requeteRepository.save(request);
-            
-            List<Map<String, Object>> jsonResponse = new ArrayList<>();
-            for (Tuple tuple : result) {
-                Map<String, Object> row = new HashMap<>();
-                for (Map.Entry<String, Expression<?>> entry : aliasMapping.entrySet()) {
-                    row.put(entry.getKey(), tuple.get(entry.getValue()));
-                }
-                jsonResponse.add(row);
-            }
-
-            return jsonResponse;
-
-        } catch (Exception e) {
-            System.err.println("Error executing query: " + e.getMessage());
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-    
+  
 
     public List<Map<String, Object>> fetchTableDataWithCondition(QueryRequestDTO request) {
     	System.out.println("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
@@ -448,7 +295,20 @@ public class DynamicQueryService {
                     } else {
                     		System.out.println("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
                     // Apply having condition using the correct type
-                    Number value = (Number) having.getValue();
+                    		Object rawValue = having.getValue();
+                    		Number value;
+
+                    		if (rawValue instanceof Number) {
+                    		    value = (Number) rawValue;
+                    		} else if (rawValue instanceof String) {
+                    		    try {
+                    		        value = Double.parseDouble((String) rawValue);
+                    		    } catch (NumberFormatException e) {
+                    		        throw new IllegalArgumentException("Value is not a valid number: " + rawValue);
+                    		    }
+                    		} else {
+                    		    throw new IllegalArgumentException("Unsupported value type: " + rawValue.getClass().getName());
+                    		}
                     
                     if (having.getFunction() == null || having.getFunction().trim().isEmpty()) {
                     	
@@ -590,34 +450,46 @@ selectExpressions.add(Expressions.path(Object.class, tablePath, column.getName()
 
 // Handle aggregations
 if (subqueryRequete.getAggregation() != null && !subqueryRequete.getAggregation().isEmpty()) {
-for (AggregationRequest agg : subqueryRequete.getAggregation()) {
-TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
-if (column != null) {
-RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
-if (tablePath != null) {
-Expression<?> colExpr = Expressions.path(Object.class, tablePath, column.getName());
+	System.out.println("entererererer");
+    for (AggregationRequest agg : subqueryRequete.getAggregation()) {
+        TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+        if (column != null) {
+            RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+            System.out.println("1");
+            if (tablePath != null) {
+                Expression<?> aggregateExpr = Expressions.path(Object.class, tablePath, column.getName());
+                System.out.println("2");
+                // Apply multiple aggregation functions sequentially
+                for (String func : agg.getfunctionagg()) {
+                    switch (func.toUpperCase()) {
+                        case "MAX":
+                            aggregateExpr = SQLExpressions.max(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
+                            System.out.println("3");
+                            break;
+                        case "MIN":
+                            aggregateExpr = SQLExpressions.min(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
+                            break;
+                        case "AVG":
+                            aggregateExpr = SQLExpressions.avg(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
+                            break;
+                        case "SUM":
+                            aggregateExpr = SQLExpressions.sum(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
+                            break;
+                        case "COUNT":
+                            aggregateExpr = SQLExpressions.count(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unsupported aggregation function: " + func);
+                    }
+                }
 
-switch (agg.getfunctionagg().toLowerCase()) {
-case "count":
-   selectExpressions.add(Expressions.numberTemplate(Long.class, "count({0})", colExpr));
-   break;
-case "sum":
-   selectExpressions.add(Expressions.numberTemplate(Double.class, "sum({0})", colExpr));
-   break;
-case "avg":
-   selectExpressions.add(Expressions.numberTemplate(Double.class, "avg({0})", colExpr));
-   break;
-case "min":
-   selectExpressions.add(Expressions.numberTemplate(Double.class, "min({0})", colExpr));
-   break;
-case "max":
-   selectExpressions.add(Expressions.numberTemplate(Double.class, "max({0})", colExpr));
-   break;
+                selectExpressions.add(aggregateExpr);
+            } else {System.out.println("no table path");}
+        }
+    }
 }
-}
-}
-}
-}
+else   { System.out.println("noo aggg");}
+
 
 // If no expressions, add a default one (usually the first column)
 if (selectExpressions.isEmpty()) {
@@ -639,6 +511,8 @@ List<DbTable> tables = new ArrayList<>();
 for (Long tableId : subqueryRequete.gettables()) {
 tables.add(tableIdMap.get(tableId));
 }
+
+
 addDynamicFilters(subquery, subqueryRequete.getFilters(), tables);
 }
 
@@ -719,38 +593,6 @@ query.having(Expressions.booleanTemplate("{0} = ({1})", aggExpr, subquery));
 }
 }
 
-
-/*
-private <T extends Number> void applySimpleHavingCondition(SQLQuery<?> query, 
-                                String operator, 
-                                NumberExpression<T> expr, 
-                                T value) {
-switch (operator) {
-case ">": 
-query.having(expr.gt(value));
-break;
-case "<": 
-query.having(expr.lt(value));
-break;
-case "=": 
-query.having(expr.eq(value));
-break;
-case ">=": 
-query.having(expr.goe(value));
-break;
-case "<=": 
-query.having(expr.loe(value));
-break;
-case "!=":
-case "<>":
-query.having(expr.ne(value));
-break;
-default:
-// Default to equality for unknown operators
-query.having(expr.eq(value));
-}
-}
-  */  
     
     private void addJoinsFromList(SQLQuery<?> query, Map<Long, RelationalPath<?>> tablePaths, 
             List<JoinCondition> joinConditions) {
@@ -800,7 +642,7 @@ default:
 }
 
     
-
+/*
     private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters, List<DbTable> tables) {
         if (filters == null || filters.isEmpty()) {
             System.out.println("No filters applied.");
@@ -838,7 +680,7 @@ default:
             
             
             String operator = filter.getOperator().toLowerCase();
-            String value = filter.getValue();
+            Object value = filter.getValue();
             System.out.println("eeeeee");
             System.out.println(value);
             Expression<?> column = Expressions.template(Object.class, "{0}.{1}", 
@@ -876,121 +718,314 @@ default:
             }
         }
     }
+*/
+    
+    
+    
+    /**
+     * Modified addDynamicFilters method to handle both simple values and subqueries
+     */
+    private void addDynamicFilters(SQLQuery<?> query, List<FilterCondition> filters, List<DbTable> tables) {
+        if (filters == null || filters.isEmpty()) {
+            System.out.println("No filters applied.");
+            return;
+        }
 
+        Map<String, DbTable> tableNameMap = tables.stream()
+            .collect(Collectors.toMap(DbTable::getName, t -> t));
+
+        for (FilterCondition filter : filters) {
+            System.out.println("Filter received -> Column: " + filter.getColumnName() + 
+                               ", Operator: " + filter.getOperator() + 
+                               ", Value: " + filter.getValue() +
+                               ", Is Subquery: " + filter.isTest());
+            
+            // Check if this is a subquery comparison
+            if (filter.isTest()) {
+                // Handle subquery comparison
+                addDynamicFilterWithSubquery(query, filter, tables, tableNameMap);
+            } else {
+                // Handle simple value comparison
+                addSimpleFilter(query, filter, tables, tableNameMap);
+            }
+        }
+    }
+
+    /**
+     * Handle simple value comparison filters
+     */
+    private void addSimpleFilter(SQLQuery<?> query, FilterCondition filter, 
+            List<DbTable> tables, Map<String, DbTable> tableNameMap) {
+// Handle qualified column names (table.column format)
+String columnName = filter.getColumnName();
+String tableName = null;
+
+if (columnName.contains(".")) {
+String[] parts = columnName.split("\\.", 2);
+tableName = parts[0];
+columnName = parts[1];
+} else if (filter.getTableName() != null) {
+// Use tableName from filter if provided
+tableName = filter.getTableName();
+} else if (tables.size() == 1) {
+// If only one table, use that
+tableName = tables.get(0).getName();
+} else {
+// Cannot determine which table the column belongs to
+throw new IllegalArgumentException("Column name must be qualified with table name when multiple tables are used: " + columnName);
+}
+
+// Create fully qualified column name
+String operator = filter.getOperator().toLowerCase();
+Object valueObj = filter.getValue();
+
+if (!(valueObj instanceof String)) {
+throw new IllegalArgumentException("Value must be a String for simple filters");
+}
+String value = (String) valueObj;
+
+Expression<?> column = Expressions.template(Object.class, "{0}.{1}", 
+Expressions.template(Object.class, tableName),
+Expressions.template(Object.class, columnName)
+);
+
+switch (operator) {
+case "=":
+query.where(Expressions.booleanTemplate("{0} = {1}", column, value));
+break;
+case "!=":
+query.where(Expressions.booleanTemplate("{0} != {1}", column, value));
+break;
+case "like":
+query.where(Expressions.booleanTemplate("{0} LIKE {1}", column, "%" + value + "%"));
+break;
+case ">":
+query.where(Expressions.booleanTemplate("{0} > {1}", column, value));
+break;
+case "<":
+query.where(Expressions.booleanTemplate("{0} < {1}", column, value));
+break;
+case ">=":
+query.where(Expressions.booleanTemplate("{0} >= {1}", column, value));
+break;
+case "<=":
+query.where(Expressions.booleanTemplate("{0} <= {1}", column, value));
+break;
+case "in":
+query.where(Expressions.booleanTemplate("{0} IN ({1})", column, value));
+break;
+default:
+throw new IllegalArgumentException("Unsupported operator: " + operator);
+}
+}
+
+
+    /**
+     * Handle filters with subquery comparison
+     */
+    private void addDynamicFilterWithSubquery(SQLQuery<?> query, FilterCondition filter, 
+            List<DbTable> tables, Map<String, DbTable> tableNameMap) {
+// Extract table and column information
+String columnName = filter.getColumnName();
+String tableName = null;
+
+if (columnName.contains(".")) {
+String[] parts = columnName.split("\\.", 2);
+tableName = parts[0];
+columnName = parts[1];
+} else if (filter.getTableName() != null) {
+tableName = filter.getTableName();
+} else if (tables.size() == 1) {
+tableName = tables.get(0).getName();
+} else {
+throw new IllegalArgumentException("Column name must be qualified with table name when multiple tables are used: " + columnName);
+}
+
+// Create the column expression
+Expression<?> column = Expressions.template(Object.class, "{0}.{1}", 
+Expressions.template(Object.class, tableName),
+Expressions.template(Object.class, columnName)
+);
+
+// Get the value as a Requete object
+Object valueObj = filter.getValue();
+Requete subqueryRequete;
+
+if (valueObj instanceof Requete) {
+subqueryRequete = (Requete) valueObj;
+} else {
+throw new IllegalArgumentException("Value must be a Requete object for subquery filters");
+}
+
+// Create a mapping of table IDs to path objects
+Map<Long, RelationalPath<?>> tablePaths = new HashMap<>();
+Map<Long, DbTable> tableIdMap = new HashMap<>();
+
+for (DbTable table : tables) {
+RelationalPathBase<?> path = new RelationalPathBase<>(
+Object.class, 
+table.getName(),  
+table.getName(), 
+table.getName()
+);
+tablePaths.put(table.getId(), path);
+tableIdMap.put(table.getId(), table);
+}
+
+// Create database connection for subquery
+SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(
+getDbUrl(tables.get(0)), 
+tables.get(0).getDatabase().getConnexion().getUsername(),
+tables.get(0).getDatabase().getConnexion().getPassword(),
+getDriverClass(tables.get(0).getDatabase().getDbtype())
+);
+
+// Create and apply the subquery
+SQLQuery<?> subquery = createSubquery(queryFactory, subqueryRequete, tablePaths, tableIdMap);
+
+// Apply the filter with the subquery
+applyWhereWithSubquery(query, filter, column, subquery);
+}
+
+
+    /**
+     * Apply WHERE condition with subquery
+     */
+    private void applyWhereWithSubquery(SQLQuery<?> query, 
+                                        FilterCondition filter, 
+                                        Expression<?> column, 
+                                        SQLQuery<?> subquery) {
+        String operator = filter.getOperator();
+        if (operator == null || operator.isEmpty()) {
+            operator = "="; // Default operator
+        }
+        
+        switch (operator.toUpperCase()) {
+            case "=":
+            case "==":
+                query.where(Expressions.booleanTemplate("{0} = ({1})", column, subquery));
+                break;
+            case ">":
+                query.where(Expressions.booleanTemplate("{0} > ({1})", column, subquery));
+                break;
+            case "<":
+                query.where(Expressions.booleanTemplate("{0} < ({1})", column, subquery));
+                break;
+            case ">=":
+                query.where(Expressions.booleanTemplate("{0} >= ({1})", column, subquery));
+                break;
+            case "<=":
+                query.where(Expressions.booleanTemplate("{0} <= ({1})", column, subquery));
+                break;
+            case "!=":
+            case "<>":
+                query.where(Expressions.booleanTemplate("{0} != ({1})", column, subquery));
+                break;
+            case "IN":
+                query.where(Expressions.booleanTemplate("{0} IN ({1})", column, subquery));
+                break;
+            case "NOT IN":
+                query.where(Expressions.booleanTemplate("{0} NOT IN ({1})", column, subquery));
+                break;
+            case "EXISTS":
+                query.where(Expressions.booleanTemplate("EXISTS ({1})", column, subquery));
+                break;
+            case "NOT EXISTS":
+                query.where(Expressions.booleanTemplate("NOT EXISTS ({1})", column, subquery));
+                break;
+            case "ANY":
+            case "SOME":
+                query.where(Expressions.booleanTemplate("{0} " + filter.getOperator() + " ANY ({1})", column, subquery));
+                break;
+            case "ALL":
+                query.where(Expressions.booleanTemplate("{0} " + filter.getOperator() + " ALL ({1})", column, subquery));
+                break;
+            default:
+                // Default to = for unknown operators
+                query.where(Expressions.booleanTemplate("{0} = ({1})", column, subquery));
+        }
+    }
+
+    /**
+     * Helper method to get the database URL
+     */
+    private String getDbUrl(DbTable table) {
+        DatabaseType dbType = table.getDatabase().getDbtype();
+        
+        if (dbType == DatabaseType.MySQL) {
+            return "jdbc:mysql://" + table.getDatabase().getConnexion().getHost() + ":" 
+                  + table.getDatabase().getConnexion().getPort() + "/" 
+                  + table.getDatabase().getName();
+        } else if (dbType == DatabaseType.Oracle) {
+            return "jdbc:oracle:thin:@" + table.getDatabase().getConnexion().getHost() + ":" 
+                  + table.getDatabase().getConnexion().getPort() + ":" 
+                  + table.getDatabase().getName();
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+    }
+
+    /**
+     * Helper method to get the driver class
+     */
+    private String getDriverClass(DatabaseType dbType) {
+        if (dbType == DatabaseType.MySQL) {
+            return "com.mysql.cj.jdbc.Driver";
+        } else if (dbType == DatabaseType.Oracle) {
+            return "oracle.jdbc.OracleDriver";
+        } else {
+            throw new RuntimeException("Unsupported database type: " + dbType);
+        }
+    }
+    
+    
+    
+    
     private void addAggregations(QueryRequestDTO request, List<Expression<?>> selectExpressions, 
             Map<String, Expression<?>> aliasMapping, List<DbTable> tables) {
-if (request.getAggregations() != null) {
-for (AggregationRequest agg : request.getAggregations()) {
-TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
-if (column != null) {
-String tableName = column.getTable().getName();
-String columnName = column.getName();
-String alias = agg.getfunctionagg().toLowerCase() + "_" + tableName + "_" + columnName;
-Expression<?> aggregateExpr = null;
+    if (request.getAggregations() != null) {
+        for (AggregationRequest agg : request.getAggregations()) {
+            TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+            if (column != null) {
+                String tableName = column.getTable().getName();
+                String columnName = column.getName();
+                Expression<?> aggregateExpr = Expressions.numberTemplate(Double.class, tableName + "." + columnName);
 
-switch (agg.getfunctionagg().toUpperCase()) {
-    case "MAX":
-        aggregateExpr = SQLExpressions.max(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+                // Apply multiple aggregation functions sequentially using Expressions.numberTemplate
+                for (String func : agg.getfunctionagg()) {
+                    switch (func.toUpperCase()) {
+                        case "MAX":
+                            aggregateExpr = SQLExpressions.max(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
+                            break;
+                        case "MIN":
+                            aggregateExpr = SQLExpressions.min(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
+                            break;
+                        case "AVG":
+                            aggregateExpr = SQLExpressions.avg(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
+                            break;
+                        case "SUM":
+                            aggregateExpr = SQLExpressions.sum(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
+                            break;
+                        case "COUNT":
+                            aggregateExpr = SQLExpressions.count(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unsupported aggregation function: " + func);
+                    }
+                }
 
-        );
-        break;
-    case "MIN":
-        aggregateExpr = SQLExpressions.min(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    case "AVG":
-        aggregateExpr = SQLExpressions.avg(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    case "SUM":
-        aggregateExpr = SQLExpressions.sum(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-        );
-        break;
-    case "COUNT":
-        
-        aggregateExpr = SQLExpressions.count(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    default:
-        throw new IllegalArgumentException("Unsupported aggregation function: " + agg.getfunctionagg());
+                // Generate alias with all applied functions
+                String alias = String.join("_", agg.getfunctionagg()).toLowerCase() + "_" + tableName + "_" + columnName;
+                Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
+                selectExpressions.add(aliasedExpr);
+                aliasMapping.put(alias, aliasedExpr);
+            }
+        }
+    }
 }
 
-if (aggregateExpr != null) {
-    Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
-    selectExpressions.add(aliasedExpr);
-    aliasMapping.put(alias, aliasedExpr);
-}
-}
-}
-}
-}
     
-    
-    
-    private void addAggregations2(Requete request, List<Expression<?>> selectExpressions, 
-            Map<String, Expression<?>> aliasMapping, List<DbTable> tables) {
-if (request.getAggregation() != null) {
-for (AggregationRequest agg : request.getAggregation()) {
-TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
-if (column != null) {
-String tableName = column.getTable().getName();
-String columnName = column.getName();
-String alias = agg.getfunctionagg().toLowerCase() + "_" + tableName + "_" + columnName;
-Expression<?> aggregateExpr = null;
-
-switch (agg.getfunctionagg().toUpperCase()) {
-    case "MAX":
-        aggregateExpr = SQLExpressions.max(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    case "MIN":
-        aggregateExpr = SQLExpressions.min(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    case "AVG":
-        aggregateExpr = SQLExpressions.avg(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    case "SUM":
-        aggregateExpr = SQLExpressions.sum(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-        );
-        break;
-    case "COUNT":
-        
-        aggregateExpr = SQLExpressions.count(
-        		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
-
-        );
-        break;
-    default:
-        throw new IllegalArgumentException("Unsupported aggregation function: " + agg.getfunctionagg());
-}
-
-if (aggregateExpr != null) {
-    Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
-    selectExpressions.add(aliasedExpr);
-    aliasMapping.put(alias, aliasedExpr);
-}
-}
-}
-}
-}
-    
+  
     
     public Long insertTableData(InsertRequestDTO request) {
         // Validate request
@@ -1180,7 +1215,7 @@ if (aggregateExpr != null) {
             }
 
             String operator = filter.getOperator().toLowerCase();
-            String value = filter.getValue();
+            String value = filter.getValue().toString();
             
             Expression<?> column = Expressions.template(Object.class, "{0}.{1}",
                 Expressions.template(Object.class, tableName),
@@ -1544,7 +1579,7 @@ if (aggregateExpr != null) {
             }
 
             String operator = filter.getOperator().toLowerCase();
-            String value = filter.getValue();
+            String value = filter.getValue().toString();
             
             Expression<?> column = Expressions.template(Object.class, "{0}.{1}",
                 Expressions.template(Object.class, tableName),
@@ -1620,6 +1655,217 @@ if (aggregateExpr != null) {
         }
     }
 
-    
+
+    /*
+      private void addAggregations2(Requete request, List<Expression<?>> selectExpressions, 
+              Map<String, Expression<?>> aliasMapping, List<DbTable> tables) {
+  if (request.getAggregation() != null) {
+  for (AggregationRequest agg : request.getAggregation()) {
+  TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+  if (column != null) {
+  String tableName = column.getTable().getName();
+  String columnName = column.getName();
+  String alias = agg.getfunctionagg().toLowerCase() + "_" + tableName + "_" + columnName;
+  Expression<?> aggregateExpr = null;
+
+  switch (agg.getfunctionagg().toUpperCase()) {
+      case "MAX":
+          aggregateExpr = SQLExpressions.max(
+          		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+
+          );
+          break;
+      case "MIN":
+          aggregateExpr = SQLExpressions.min(
+          		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+
+          );
+          break;
+      case "AVG":
+          aggregateExpr = SQLExpressions.avg(
+          		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+
+          );
+          break;
+      case "SUM":
+          aggregateExpr = SQLExpressions.sum(
+          		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+          );
+          break;
+      case "COUNT":
+          
+          aggregateExpr = SQLExpressions.count(
+          		Expressions.numberTemplate(Double.class, tableName + "." + columnName)
+
+          );
+          break;
+      default:
+          throw new IllegalArgumentException("Unsupported aggregation function: " + agg.getfunctionagg());
+  }
+
+  if (aggregateExpr != null) {
+      Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
+      selectExpressions.add(aliasedExpr);
+      aliasMapping.put(alias, aliasedExpr);
+  }
+  }
+  }
+  }
+  }
+   */
+      public List<Map<String, Object>> fetchTableDataWithCondition2(Requete request) {
+          // Validate request
+          if (request.gettables() == null || request.gettables().isEmpty()) {
+              throw new IllegalArgumentException("At least one table ID must be provided");
+          }
+          
+          // Get primary table (first in the list)
+          Long primaryTableId = request.gettables().get(0);
+          DbTable primaryTable = tableRepository.findById(primaryTableId)
+                  .orElseThrow(() -> new RuntimeException("Primary table not found with ID: " + primaryTableId));
+          
+          // Get database connection details
+          DatabaseType dbType = primaryTable.getDatabase().getDbtype();
+          String dbUrl, driver;
+          
+          if (dbType == DatabaseType.MySQL) {
+              dbUrl = "jdbc:mysql://" + primaryTable.getDatabase().getConnexion().getHost() + ":" 
+                    + primaryTable.getDatabase().getConnexion().getPort() + "/" 
+                    + primaryTable.getDatabase().getName();
+              driver = "com.mysql.cj.jdbc.Driver";
+          } else if (dbType == DatabaseType.Oracle) {
+              dbUrl = "jdbc:oracle:thin:@" + primaryTable.getDatabase().getConnexion().getHost() + ":" 
+                    + primaryTable.getDatabase().getConnexion().getPort() + ":" 
+                    + primaryTable.getDatabase().getName();
+              driver = "oracle.jdbc.OracleDriver";
+          } else {
+              throw new RuntimeException("Unsupported database type: " + dbType);
+          }
+
+          String username = primaryTable.getDatabase().getConnexion().getUsername();
+          String password = primaryTable.getDatabase().getConnexion().getPassword();
+          
+          SQLQueryFactory queryFactory = queryDSLFactory.createSQLQueryFactory(dbUrl, username, password, driver);
+
+          try (Connection conn = DriverManager.getConnection(dbUrl, username, password)) {
+              // Get list of requested tables and build a mapping
+              List<DbTable> tables = new ArrayList<>();
+              Map<Long, DbTable> tableIdMap = new HashMap<>();
+              
+              for (Long tableId : request.gettables()) {
+                  DbTable table = tableRepository.findById(tableId)
+                          .orElseThrow(() -> new RuntimeException("Table not found with ID: " + tableId));
+                  tables.add(table);
+                  tableIdMap.put(tableId, table);
+              }
+
+              // Create path objects for all tables - use actual table names
+              Map<Long, RelationalPath<?>> tablePaths = new HashMap<>();
+              for (DbTable table : tables) {
+                  // Use the actual table name for the path
+                  RelationalPathBase<?> path = new RelationalPathBase<>(
+                          Object.class, 
+                          table.getName(),  
+                          table.getName(), 
+                          table.getName()             
+                      );
+                  tablePaths.put(table.getId(), path);
+                  System.out.println("Added table path: " + table.getName() + " for ID: " + table.getId());
+              }
+              
+              // Get columns with their tables
+              List<TabColumn> columns = columnRepository.findAllById(request.getColumnId());
+              
+              // Prepare select expressions and alias mapping
+              List<Expression<?>> selectExpressions = new ArrayList<>();
+              Map<String, Expression<?>> aliasMapping = new HashMap<>();
+
+              for (TabColumn column : columns) {
+                  String tableName = column.getTable().getName();
+                  String columnName = column.getName();
+                  
+                  // Use template expressions to create qualified column references
+                  Expression<?> colExpr = Expressions.template(Object.class, "{0}.{1}", 
+                      Expressions.template(Object.class, tableName),
+                      Expressions.template(Object.class, columnName)
+                  );
+                  
+                  // Create alias for column
+                  String columnAlias = tableName + "_" + columnName;
+                  Expression<?> aliasedExpr = Expressions.as(colExpr, columnAlias);
+                  
+                  selectExpressions.add(aliasedExpr);
+                  aliasMapping.put(columnAlias, aliasedExpr);
+              }
+
+              // Add aggregations
+             // addAggregations2(request, selectExpressions, aliasMapping, tables);
+
+              if (selectExpressions.isEmpty()) {
+                  throw new IllegalArgumentException("No columns selected for query");
+              }
+
+              // Start building query with primary table
+              RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
+              SQLQuery<Tuple> query = queryFactory.select(selectExpressions.toArray(new Expression<?>[0])).from(primaryPath);
+              
+              // Check if there are join conditions
+              if (request.getJoinConditions() != null && !request.getJoinConditions().isEmpty()) {
+                  addJoinsFromList(query, tablePaths, request.getJoinConditions());
+              }
+              
+              // Add filters
+              addDynamicFilters(query, request.getFilters(), tables);
+              
+              // Add group by
+              if (request.getGroupByColumns() != null && !request.getGroupByColumns().isEmpty()) {
+                  List<Expression<?>> groupByExpressions = new ArrayList<>();
+                  for (Long groupByColumnId : request.getGroupByColumns()) {
+                      TabColumn groupByColumn = columnRepository.findById(groupByColumnId).orElse(null);
+                      if (groupByColumn != null) {
+                          RelationalPath<?> tablePath = tablePaths.get(groupByColumn.getTable().getId());
+                          if (tablePath != null) {
+                              groupByExpressions.add(Expressions.path(Object.class, tablePath, groupByColumn.getName()));
+                          }
+                      }
+                  }
+                  if (!groupByExpressions.isEmpty()) {
+                      query.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
+                  }
+              }
+              
+              System.out.println("Final query: " + query.toString());
+              
+              // Execute query and process results
+              List<Tuple> result = query.fetch();
+              System.out.println("Query executed successfully. Rows fetched: " + result.size());
+              
+              // Update request metadata
+              request.setSentAt(LocalDateTime.now());
+              System.out.println(LocalDateTime.now());     
+              //request.setContent(query.toString());
+          
+              request.setTableReq(primaryTable);
+              requeteRepository.save(request);
+              
+              List<Map<String, Object>> jsonResponse = new ArrayList<>();
+              for (Tuple tuple : result) {
+                  Map<String, Object> row = new HashMap<>();
+                  for (Map.Entry<String, Expression<?>> entry : aliasMapping.entrySet()) {
+                      row.put(entry.getKey(), tuple.get(entry.getValue()));
+                  }
+                  jsonResponse.add(row);
+              }
+
+              return jsonResponse;
+
+          } catch (Exception e) {
+              System.err.println("Error executing query: " + e.getMessage());
+              e.printStackTrace();
+              return Collections.emptyList();
+          }
+      }
+      
+
     
 }
