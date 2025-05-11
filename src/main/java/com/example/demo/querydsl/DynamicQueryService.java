@@ -48,6 +48,7 @@ import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.NumberPath;
 import com.querydsl.core.types.dsl.SimpleExpression;
 import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.Ops;
@@ -428,115 +429,149 @@ public class DynamicQueryService {
     private <T> SQLQuery<T> createSubquery(SQLQueryFactory queryFactory, Requete subqueryRequete, 
             Map<Long, RelationalPath<?>> tablePaths, 
             Map<Long, DbTable> tableIdMap) {
-// Get the primary table for the subquery
-Long primaryTableId = subqueryRequete.gettables().get(0);
-RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
+        // Get the primary table for the subquery
+        Long primaryTableId = subqueryRequete.gettables().get(0);
+        RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
+        
+        if (primaryPath == null) {
+            throw new IllegalArgumentException("Primary table not found for ID: " + primaryTableId);
+        }
 
-// Create subquery select expressions
-List<Expression<?>> selectExpressions = new ArrayList<>();
+        // Create subquery select expressions
+        List<Expression<?>> selectExpressions = new ArrayList<>();
 
-// Handle columns
-if (subqueryRequete.getColumnId() != null && !subqueryRequete.getColumnId().isEmpty()) {
-for (Long columnId : subqueryRequete.getColumnId()) {
-TabColumn column = columnRepository.findById(columnId).orElse(null);
-if (column != null) {
-RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
-if (tablePath != null) {
-selectExpressions.add(Expressions.path(Object.class, tablePath, column.getName()));
-}
-}
-}
-}
-
-// Handle aggregations
-if (subqueryRequete.getAggregation() != null && !subqueryRequete.getAggregation().isEmpty()) {
-	System.out.println("entererererer");
-    for (AggregationRequest agg : subqueryRequete.getAggregation()) {
-        TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
-        if (column != null) {
-            RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
-            System.out.println("1");
-            if (tablePath != null) {
-                Expression<?> aggregateExpr = Expressions.path(Object.class, tablePath, column.getName());
-                System.out.println("2");
-                // Apply multiple aggregation functions sequentially
-                for (String func : agg.getfunctionagg()) {
-                    switch (func.toUpperCase()) {
-                        case "MAX":
-                            aggregateExpr = SQLExpressions.max(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
-                            System.out.println("3");
-                            break;
-                        case "MIN":
-                            aggregateExpr = SQLExpressions.min(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
-                            break;
-                        case "AVG":
-                            aggregateExpr = SQLExpressions.avg(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
-                            break;
-                        case "SUM":
-                            aggregateExpr = SQLExpressions.sum(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
-                            break;
-                        case "COUNT":
-                            aggregateExpr = SQLExpressions.count(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Unsupported aggregation function: " + func);
+        // Handle columns
+        if (subqueryRequete.getColumnId() != null && !subqueryRequete.getColumnId().isEmpty()) {
+            for (Long columnId : subqueryRequete.getColumnId()) {
+                TabColumn column = columnRepository.findById(columnId).orElse(null);
+                if (column != null) {
+                    RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+                    if (tablePath != null) {
+                        Expression<?> pathExpr = Expressions.path(Object.class, tablePath, column.getName());
+                        selectExpressions.add(pathExpr);
                     }
                 }
-
-                selectExpressions.add(aggregateExpr);
-            } else {System.out.println("no table path");}
+            }
         }
+
+        // Handle aggregations with possible nesting
+        if (subqueryRequete.getAggregation() != null && !subqueryRequete.getAggregation().isEmpty()) {
+            for (AggregationRequest agg : subqueryRequete.getAggregation()) {
+                TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+                if (column != null) {
+                    RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+                    if (tablePath != null) {
+                        // Create base column path
+                        NumberPath<Double> numberPath = Expressions.numberPath(Double.class, tablePath, column.getName());
+                        
+                        // Special handling for multiple aggregation functions
+                        if (agg.getfunctionagg().size() > 1) {
+                            // Create a SQL template for nested aggregations
+                            StringBuilder templateStr = new StringBuilder();
+                            
+                            // Build the nested function string: MAX(AVG(column))
+                            for (String func : agg.getfunctionagg()) {
+                                templateStr.append(func.toUpperCase()).append("(");
+                            }
+                            
+                            // Add the column reference
+                            templateStr.append("{0}");
+                            
+                            // Close all function parentheses
+                            for (int i = 0; i < agg.getfunctionagg().size(); i++) {
+                                templateStr.append(")");
+                            }
+                            
+                            // Create a template expression with the nested functions
+                            Expression<?> aggregateExpr = Expressions.template(
+                                Double.class, 
+                                templateStr.toString(),
+                                numberPath
+                            );
+                            
+                            selectExpressions.add(aggregateExpr);
+                        } 
+                        // Simple case - single aggregation function
+                        else if (agg.getfunctionagg().size() == 1) {
+                            String func = agg.getfunctionagg().get(0).toUpperCase();
+                            Expression<?> aggregateExpr = null;
+                            
+                            switch (func) {
+                                case "MAX":
+                                    aggregateExpr = SQLExpressions.max(numberPath);
+                                    break;
+                                case "MIN":
+                                    aggregateExpr = SQLExpressions.min(numberPath);
+                                    break;
+                                case "AVG":
+                                    aggregateExpr = SQLExpressions.avg(numberPath);
+                                    break;
+                                case "SUM":
+                                    aggregateExpr = SQLExpressions.sum(numberPath);
+                                    break;
+                                case "COUNT":
+                                    aggregateExpr = SQLExpressions.count(numberPath);
+                                    break;
+                                default:
+                                    throw new IllegalArgumentException("Unsupported aggregation function: " + func);
+                            }
+                            
+                            if (aggregateExpr != null) {
+                                selectExpressions.add(aggregateExpr);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no expressions, add a default one
+        if (selectExpressions.isEmpty()) {
+            selectExpressions.add(Expressions.constant(1)); // Fallback to SELECT 1
+        }
+
+        // Start building subquery
+        SQLQuery<T> subquery = (SQLQuery<T>) queryFactory.select(selectExpressions.toArray(new Expression<?>[0]))
+                              .from(primaryPath);
+
+        // Add joins if present
+        if (subqueryRequete.getJoinConditions() != null && !subqueryRequete.getJoinConditions().isEmpty()) {
+            addJoinsFromList(subquery, tablePaths, subqueryRequete.getJoinConditions());
+            System.out.println("yes joinnnnnnnn");
+        }
+        else {System.out.println("no joinnnnnnnn");}
+
+        // Add filters if present
+        if (subqueryRequete.getFilters() != null && !subqueryRequete.getFilters().isEmpty()) {
+            List<DbTable> tables = new ArrayList<>();
+            for (Long tableId : subqueryRequete.gettables()) {
+                DbTable table = tableIdMap.get(tableId);
+                if (table != null) {
+                    tables.add(table);
+                }
+            }
+            addDynamicFilters(subquery, subqueryRequete.getFilters(), tables);
+        }
+
+        // Add group by if present
+        if (subqueryRequete.getGroupByColumns() != null && !subqueryRequete.getGroupByColumns().isEmpty()) {
+            List<Expression<?>> groupByExpressions = new ArrayList<>();
+            for (Long groupByColumnId : subqueryRequete.getGroupByColumns()) {
+                TabColumn groupByColumn = columnRepository.findById(groupByColumnId).orElse(null);
+                if (groupByColumn != null) {
+                    RelationalPath<?> tablePath = tablePaths.get(groupByColumn.getTable().getId());
+                    if (tablePath != null) {
+                        groupByExpressions.add(Expressions.path(Object.class, tablePath, groupByColumn.getName()));
+                    }
+                }
+            }
+            if (!groupByExpressions.isEmpty()) {
+                subquery.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
+            }
+        }
+
+        return subquery;
     }
-}
-else   { System.out.println("noo aggg");}
-
-
-// If no expressions, add a default one (usually the first column)
-if (selectExpressions.isEmpty()) {
-selectExpressions.add(Expressions.constant(1)); // Fallback to SELECT 1
-}
-
-// Start building subquery
-SQLQuery<T> subquery = (SQLQuery<T>) queryFactory.select(selectExpressions.toArray(new Expression<?>[0]))
-                        .from(primaryPath);
-
-// Add joins if present
-if (subqueryRequete.getJoinConditions() != null && !subqueryRequete.getJoinConditions().isEmpty()) {
-addJoinsFromList(subquery, tablePaths, subqueryRequete.getJoinConditions());
-}
-
-// Add filters if present
-if (subqueryRequete.getFilters() != null && !subqueryRequete.getFilters().isEmpty()) {
-List<DbTable> tables = new ArrayList<>();
-for (Long tableId : subqueryRequete.gettables()) {
-tables.add(tableIdMap.get(tableId));
-}
-
-
-addDynamicFilters(subquery, subqueryRequete.getFilters(), tables);
-}
-
-// Add group by if present
-if (subqueryRequete.getGroupByColumns() != null && !subqueryRequete.getGroupByColumns().isEmpty()) {
-List<Expression<?>> groupByExpressions = new ArrayList<>();
-for (Long groupByColumnId : subqueryRequete.getGroupByColumns()) {
-TabColumn groupByColumn = columnRepository.findById(groupByColumnId).orElse(null);
-if (groupByColumn != null) {
-RelationalPath<?> tablePath = tablePaths.get(groupByColumn.getTable().getId());
-if (tablePath != null) {
-groupByExpressions.add(Expressions.path(Object.class, tablePath, groupByColumn.getName()));
-}
-}
-}
-if (!groupByExpressions.isEmpty()) {
-subquery.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
-}
-}
-
-return subquery;
-}
-
-
 private <T extends Number> void applyHavingWithSubquery(SQLQuery<?> query, 
                              HavingCondition having, 
                              Expression<T> aggExpr, 
@@ -599,7 +634,7 @@ query.having(Expressions.booleanTemplate("{0} = ({1})", aggExpr, subquery));
 for (JoinCondition joinCondition : joinConditions) {
 RelationalPath<?> firstTablePath = tablePaths.get(joinCondition.getFirstTableId());
 RelationalPath<?> secondTablePath = tablePaths.get(joinCondition.getSecondTableId());
-
+System.out.println("1");
 if (firstTablePath == null || secondTablePath == null) {
 throw new RuntimeException("One of the tables in the join condition is missing. First table ID: " + 
  joinCondition.getFirstTableId() + ", Second table ID: " + joinCondition.getSecondTableId());
@@ -609,7 +644,7 @@ String firstTable = firstTablePath.getMetadata().getName();
 String secondTable = secondTablePath.getMetadata().getName();
 
 System.out.println("Joining tables: " + firstTable + " and " + secondTable);
-
+System.out.println("2");
 // Use properly qualified column references with appropriate operators
 BooleanExpression joinOnCondition = Expressions.booleanTemplate(
 "{0}.{1} = {2}.{3}", 
