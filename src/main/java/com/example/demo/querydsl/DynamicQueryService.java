@@ -293,6 +293,7 @@ public class DynamicQueryService {
                         
                         // Apply the having condition with the subquery
                         applyHavingWithSubquery(query, having, aggExpr, subquery);
+                        System.out.println(aggExpr);
                     } else {
                     		System.out.println("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
                     // Apply having condition using the correct type
@@ -430,7 +431,30 @@ public class DynamicQueryService {
             Map<Long, RelationalPath<?>> tablePaths, 
             Map<Long, DbTable> tableIdMap) {
         // Get the primary table for the subquery
+    	
+    	 for (Long tableId : subqueryRequete.gettables()) {
+    	        if (!tablePaths.containsKey(tableId)) {
+    	            // Fetch the table from tableIdMap or database
+    	            DbTable table = tableIdMap.getOrDefault(tableId, tableRepository.findById(tableId)
+    	                    .orElseThrow(() -> new IllegalArgumentException("Table not found for ID: " + tableId)));
+
+    	            // Add the table to tableIdMap if not already present
+    	            tableIdMap.putIfAbsent(tableId, table);
+    	            System.out.println("Added table to tableIdMap: " + table.getName() + " for ID: " + tableId);
+
+    	            // Create and add the table path to tablePaths
+    	            RelationalPathBase<?> path = new RelationalPathBase<>(
+    	                Object.class, 
+    	                table.getName(),  
+    	                table.getName(), 
+    	                table.getName()
+    	            );
+    	            tablePaths.put(tableId, path);
+    	            System.out.println("Added table path: " + table.getName() + " for ID: " + tableId);
+    	        }
+    	    }
         Long primaryTableId = subqueryRequete.gettables().get(0);
+      
         RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
         
         if (primaryPath == null) {
@@ -456,16 +480,21 @@ public class DynamicQueryService {
 
         // Handle aggregations with possible nesting
         if (subqueryRequete.getAggregation() != null && !subqueryRequete.getAggregation().isEmpty()) {
+        	System.out.println("hedha 1");
             for (AggregationRequest agg : subqueryRequete.getAggregation()) {
                 TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
                 if (column != null) {
+                	System.out.println("column mawjouda");
                     RelationalPath<?> tablePath = tablePaths.get(column.getTable().getId());
+                    System.out.println(column.getTable().getId());
+                    System.out.println(tablePaths.get(column.getTable().getId()));
                     if (tablePath != null) {
                         // Create base column path
                         NumberPath<Double> numberPath = Expressions.numberPath(Double.class, tablePath, column.getName());
-                        
+                        System.out.println("hedha 1.5");
                         // Special handling for multiple aggregation functions
                         if (agg.getfunctionagg().size() > 1) {
+                        	System.out.println("hedha 3");
                             // Create a SQL template for nested aggregations
                             StringBuilder templateStr = new StringBuilder();
                             
@@ -493,6 +522,7 @@ public class DynamicQueryService {
                         } 
                         // Simple case - single aggregation function
                         else if (agg.getfunctionagg().size() == 1) {
+                        	System.out.println("hedha 2");
                             String func = agg.getfunctionagg().get(0).toUpperCase();
                             Expression<?> aggregateExpr = null;
                             
@@ -521,9 +551,11 @@ public class DynamicQueryService {
                             }
                         }
                     }
+                    else {System.out.println("famech");}
                 }
             }
         }
+        else {System.out.println("hedha howa");}
 
         // If no expressions, add a default one
         if (selectExpressions.isEmpty()) {
@@ -546,10 +578,13 @@ public class DynamicQueryService {
             List<DbTable> tables = new ArrayList<>();
             for (Long tableId : subqueryRequete.gettables()) {
                 DbTable table = tableIdMap.get(tableId);
-                if (table != null) {
+                if (table == null) {
+                    System.out.println("Table ID " + tableId + " not found in tableIdMap");
+                } else {
                     tables.add(table);
                 }
             }
+            System.out.println("Tables after filtering: " + tables.size());
             addDynamicFilters(subquery, subqueryRequete.getFilters(), tables);
         }
 
@@ -569,9 +604,137 @@ public class DynamicQueryService {
                 subquery.groupBy(groupByExpressions.toArray(new Expression<?>[0]));
             }
         }
+        
+        
+     // Add HAVING conditions to the subquery
+        if (subqueryRequete.getHavingConditions() != null && !subqueryRequete.getHavingConditions().isEmpty()) {
+            for (HavingCondition having : subqueryRequete.getHavingConditions()) {
+                TabColumn column = columnRepository.findById(having.getColumnId()).orElse(null);
+                if (column == null) continue;
+
+                DbTable table = tableIdMap.get(column.getTable().getId());
+                if (table == null) continue;
+
+                // Build column expression
+                Expression<?> colExpr = Expressions.template(Object.class, "{0}.{1}", 
+                    Expressions.template(Object.class, table.getName()), 
+                    Expressions.template(Object.class, column.getName())
+                );
+
+                Expression<? extends Number> aggExpr = null;
+
+                if (having.getFunction() == null || having.getFunction().trim().isEmpty()) {
+                	
+                    // No aggregation function - use the column directly
+                    aggExpr = (Expression<? extends Number>) colExpr;
+                } else {
+                	System.out.println("function in having 1");
+                    switch (having.getFunction().toLowerCase()) {
+                        case "count":
+                            aggExpr = Expressions.numberTemplate(Long.class, "count({0})", colExpr);
+                            System.out.println("function in having 2");
+                            break;
+                        case "sum":
+                            aggExpr = Expressions.numberTemplate(Double.class, "sum({0})", colExpr);
+                            break;
+                        case "avg":
+                            aggExpr = Expressions.numberTemplate(Double.class, "avg({0})", colExpr);
+                            break;
+                        case "min":
+                            aggExpr = Expressions.numberTemplate(Double.class, "min({0})", colExpr);
+                            break;
+                        case "max":
+                            aggExpr = Expressions.numberTemplate(Double.class, "max({0})", colExpr);
+                            break;
+                        default:
+                            continue;
+                    }
+                }
+
+                if (having.isTest()) {
+                    Object value = having.getValue();
+                    Requete subqueryRequete1;
+                    if (value instanceof LinkedHashMap) {
+                        ObjectMapper mapper = new ObjectMapper();
+                        mapper.registerModule(new JavaTimeModule());
+                        subqueryRequete1 = mapper.convertValue(value, Requete.class);
+                    } else if (value instanceof Requete) {
+                        subqueryRequete1 = (Requete) value;
+                        System.out.println("yes instance");
+                    } else {
+                        throw new IllegalArgumentException("Unsupported value type: " + value.getClass().getName());
+                    }
+
+                    // Create a nested subquery using the Requete object
+                    SQLQuery<?> subquery1 = createSubquery(queryFactory, subqueryRequete1, tablePaths, tableIdMap);
+                    System.out.println(subquery1.toString());
+                    // Apply the HAVING condition with the subquery
+                    applyHavingWithSubquery(subquery, having, aggExpr, subquery1);
+                } else {
+                	System.out.println("exexexe");
+                	System.out.println(aggExpr);
+                    // Apply a direct HAVING condition
+                    Object rawValue = having.getValue();
+                    Number value;
+
+                    if (rawValue instanceof Number) {
+                        value = (Number) rawValue;
+                    } else if (rawValue instanceof String) {
+                        try {
+                            value = Double.parseDouble((String) rawValue);
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Value is not a valid number: " + rawValue);
+                        }
+                    } else {
+                        throw new IllegalArgumentException("Unsupported value type: " + rawValue.getClass().getName());
+                    }
+
+                    // Apply the HAVING condition directly
+                    applySimpleHavingCondition2(subquery, aggExpr, having.getOperator(), value);
+                }
+            }
+        }
+
 
         return subquery;
     }
+    
+ // Overloaded method for generic SQLQuery<?>
+    private <T> void applySimpleHavingCondition2(SQLQuery<T> query, Expression<?> colExpr, String operator, Number value) {
+    	System.out.println("using") ;
+        if (value instanceof Integer || value instanceof Long) {
+            // For integer columns, work with Long values
+            Long longValue = value.longValue();
+            NumberExpression<Long> numExpr = Expressions.numberTemplate(Long.class, "{0}", colExpr);
+
+            switch (operator) {
+                case ">": query.having(numExpr.gt(longValue)); break;
+                case "<": query.having(numExpr.lt(longValue)); break;
+                case "=": query.having(numExpr.eq(longValue)); break;
+                case ">=": query.having(numExpr.goe(longValue)); break;
+                case "<=": query.having(numExpr.loe(longValue)); break;
+                case "!=": query.having(numExpr.ne(longValue)); break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        } else {
+            // For decimal columns, work with Double values
+            Double doubleValue = value.doubleValue();
+            NumberExpression<Double> numExpr = Expressions.numberTemplate(Double.class, "{0}", colExpr);
+
+            switch (operator) {
+                case ">": query.having(numExpr.gt(doubleValue)); break;
+                case "<": query.having(numExpr.lt(doubleValue)); break;
+                case "=": query.having(numExpr.eq(doubleValue)); break;
+                case ">=": query.having(numExpr.goe(doubleValue)); break;
+                case "<=": query.having(numExpr.loe(doubleValue)); break;
+                case "!=": query.having(numExpr.ne(doubleValue)); break;
+                default:
+                    throw new IllegalArgumentException("Unsupported operator: " + operator);
+            }
+        }
+    }
+    
 private <T extends Number> void applyHavingWithSubquery(SQLQuery<?> query, 
                              HavingCondition having, 
                              Expression<T> aggExpr, 
@@ -768,7 +931,7 @@ default:
 
         Map<String, DbTable> tableNameMap = tables.stream()
             .collect(Collectors.toMap(DbTable::getName, t -> t));
-
+System.out.println(tables.size()+"sssssssssssssssssssssssieze");
         for (FilterCondition filter : filters) {
             System.out.println("Filter received -> Column: " + filter.getColumnName() + 
                                ", Operator: " + filter.getOperator() + 
@@ -777,6 +940,9 @@ default:
             
             // Check if this is a subquery comparison
             if (filter.isTest()) {
+            	if (tables == null || tables.isEmpty()) {
+            	    throw new IllegalArgumentException("No tables provided for the query. loula");
+            	}
                 // Handle subquery comparison
                 addDynamicFilterWithSubquery(query, filter, tables, tableNameMap);
             } else {
@@ -860,6 +1026,11 @@ throw new IllegalArgumentException("Unsupported operator: " + operator);
      */
     private void addDynamicFilterWithSubquery(SQLQuery<?> query, FilterCondition filter, 
             List<DbTable> tables, Map<String, DbTable> tableNameMap) {
+    	
+    	
+    	if (tables == null || tables.isEmpty()) {
+    	    throw new IllegalArgumentException("No tables provided for the query.");
+    	}
 // Extract table and column information
 String columnName = filter.getColumnName();
 String tableName = null;

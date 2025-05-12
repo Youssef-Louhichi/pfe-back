@@ -54,7 +54,7 @@ public class Requete implements Serializable{
     private List<AggregationRequest> aggregation;
     
     @ElementCollection
-    private List<HavingCondition> havings;
+    private List<HavingCondition> HavingConditions;
     
     
     
@@ -71,12 +71,12 @@ public class Requete implements Serializable{
     
     
     
-    public List<HavingCondition> getHavings() {
-		return havings;
+    public List<HavingCondition> getHavingConditions() {
+		return HavingConditions;
 	}
 
-	public void setHavings(List<HavingCondition> havings) {
-		this.havings = havings;
+	public void setHavingConditions(List<HavingCondition> HavingConditions) {
+		this.HavingConditions = HavingConditions;
 	}
 
 	@ManyToOne
