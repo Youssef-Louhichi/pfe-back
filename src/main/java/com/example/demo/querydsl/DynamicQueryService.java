@@ -6,6 +6,7 @@ import com.querydsl.sql.SQLQueryFactory;
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
+import com.example.demo.condition.OrderBy;
 import com.querydsl.sql.dml.SQLDeleteClause;
 import com.querydsl.sql.dml.SQLInsertClause;
 import com.querydsl.sql.dml.SQLUpdateClause;
@@ -46,6 +47,8 @@ import com.querydsl.sql.RelationalPathBase;
 import com.querydsl.sql.SQLExpressions;
 import com.querydsl.sql.SQLQuery;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.ComparableExpression;
+import com.querydsl.core.types.dsl.ComparableExpressionBase;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.types.dsl.NumberPath;
@@ -352,8 +355,54 @@ public class DynamicQueryService {
                     } }
                 } }
             }
+           
+         // Add order by
+         // Add order by
+            if (request.getOrderBy() != null && !request.getOrderBy().isEmpty()) {
+                List<OrderBy> orderByList = request.getOrderBy();
+                for (OrderBy orderBy : orderByList) {
+                    Long colId = orderBy.getColId(); // Updated to use columnId
+                    String orderType = orderBy.getOrderType();
 
+                    if (colId != null) {
+                        // Find the column by its ID
+                        TabColumn orderColumn = columns.stream()
+                                .filter(column -> column.getId().equals(colId))
+                                .findFirst()
+                                .orElseThrow(() -> new RuntimeException("Column not found for Order By: " + colId));
+
+                        // Get the table of this column
+                        DbTable orderTable = orderColumn.getTable();
+                        RelationalPath<?> orderTablePath = tablePaths.get(orderTable.getId());
+
+                        if (orderTablePath != null) {
+                            // Create a column reference for the order by column
+                            ComparableExpression<?> orderByExpr = Expressions.comparablePath(Comparable.class, orderTablePath, orderColumn.getName());
+
+                            // Apply the order by clause
+                            if ("ASC".equalsIgnoreCase(orderType)) {
+                                query.orderBy(orderByExpr.asc());
+                            } else if ("DESC".equalsIgnoreCase(orderType)) {
+                                query.orderBy(orderByExpr.desc());
+                            } else {
+                                throw new IllegalArgumentException("Invalid order type: " + orderType);
+                            }
+                        } else {
+                            throw new RuntimeException("Invalid table for column: " + colId);
+                        }
+                    }
+                }
+            }
             
+            if (request.getLimit() != null && request.getLimit() > 0) {
+                query.limit(request.getLimit());
+/*
+                if (request.getOffset() != null && request.getOffset() >= 0) {
+                    query.offset(request.getOffset());
+                }*/
+            }
+
+
             System.out.println("Final query: " + query.toString());
             
             // Execute query and process results
@@ -362,15 +411,15 @@ public class DynamicQueryService {
             Requete req = new Requete();
             req.setSentAt(LocalDateTime.now());
            // req.setContent(query.toString());
-            req.setSender(request.getReq().getSender());
+           /* req.setSender(request.getReq().getSender());
             req.setTable(primaryTable);
             req.setJoinConditions(request.getJoinRequest().getJoinConditions());
             req.setAggregation(request.getAggregations());
             req.setFilters(request.getFilters());
-            req.settables(request.getTableId());
+            req.setTableId(request.getTableId());
             req.setColumnId(request.getColumnId());
             req.setGroupByColumns(request.getGroupByColumns());
-            requeteRepository.save( req);
+            requeteRepository.save( req);*/
             List<Map<String, Object>> jsonResponse = new ArrayList<>();
             for (Tuple tuple : result) {
                 Map<String, Object> row = new HashMap<>();
@@ -432,7 +481,7 @@ public class DynamicQueryService {
             Map<Long, DbTable> tableIdMap) {
         // Get the primary table for the subquery
     	
-    	 for (Long tableId : subqueryRequete.gettables()) {
+    	 for (Long tableId : subqueryRequete.getTableId()) {
     	        if (!tablePaths.containsKey(tableId)) {
     	            // Fetch the table from tableIdMap or database
     	            DbTable table = tableIdMap.getOrDefault(tableId, tableRepository.findById(tableId)
@@ -453,7 +502,7 @@ public class DynamicQueryService {
     	            System.out.println("Added table path: " + table.getName() + " for ID: " + tableId);
     	        }
     	    }
-        Long primaryTableId = subqueryRequete.gettables().get(0);
+        Long primaryTableId = subqueryRequete.getTableId().get(0);
       
         RelationalPath<?> primaryPath = tablePaths.get(primaryTableId);
         
@@ -576,7 +625,7 @@ public class DynamicQueryService {
         // Add filters if present
         if (subqueryRequete.getFilters() != null && !subqueryRequete.getFilters().isEmpty()) {
             List<DbTable> tables = new ArrayList<>();
-            for (Long tableId : subqueryRequete.gettables()) {
+            for (Long tableId : subqueryRequete.getTableId()) {
                 DbTable table = tableIdMap.get(tableId);
                 if (table == null) {
                     System.out.println("Table ID " + tableId + " not found in tableIdMap");
@@ -1189,46 +1238,65 @@ applyWhereWithSubquery(query, filter, column, subquery);
     
     private void addAggregations(QueryRequestDTO request, List<Expression<?>> selectExpressions, 
             Map<String, Expression<?>> aliasMapping, List<DbTable> tables) {
-    if (request.getAggregations() != null) {
-        for (AggregationRequest agg : request.getAggregations()) {
-            TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
-            if (column != null) {
-                String tableName = column.getTable().getName();
-                String columnName = column.getName();
-                Expression<?> aggregateExpr = Expressions.numberTemplate(Double.class, tableName + "." + columnName);
+        if (request.getAggregations() != null) {
+            for (AggregationRequest agg : request.getAggregations()) {
+                TabColumn column = columnRepository.findById(agg.getColumnId()).orElse(null);
+                if (column != null) {
+                    String tableName = column.getTable().getName();
+                    String columnName = column.getName();
+                    String columnType = column.getType().toLowerCase();
 
-                // Apply multiple aggregation functions sequentially using Expressions.numberTemplate
-                for (String func : agg.getfunctionagg()) {
-                    switch (func.toUpperCase()) {
-                        case "MAX":
-                            aggregateExpr = SQLExpressions.max(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
-                            break;
-                        case "MIN":
-                            aggregateExpr = SQLExpressions.min(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
-                            break;
-                        case "AVG":
-                            aggregateExpr = SQLExpressions.avg(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
-                            break;
-                        case "SUM":
-                            aggregateExpr = SQLExpressions.sum(Expressions.numberTemplate(Double.class,  aggregateExpr.toString() ));
-                            break;
-                        case "COUNT":
-                            aggregateExpr = SQLExpressions.count(Expressions.numberTemplate(Double.class, aggregateExpr.toString() ));
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Unsupported aggregation function: " + func);
+                    Expression<?> aggregateExpr;
+
+                    if (columnType.contains("date")) {
+                        aggregateExpr = Expressions.dateTemplate(java.util.Date.class, tableName + "." + columnName);
+                        for (String func : agg.getfunctionagg()) {
+                        	switch (func.toUpperCase()) {
+                        	case "MAX":
+                                aggregateExpr = SQLExpressions.max(Expressions.dateTemplate(java.util.Date.class, aggregateExpr.toString()));
+                                break;
+                        	case "MIN":
+                                aggregateExpr = SQLExpressions.min(Expressions.dateTemplate(java.util.Date.class, aggregateExpr.toString()));
+                                break;
+                          
+                            case "COUNT":
+                                aggregateExpr = SQLExpressions.count(aggregateExpr);
+                                break;
+                                
+                                
+                            }
+                        }
+                    } else { // For numbers
+                        aggregateExpr = Expressions.numberTemplate(Double.class, tableName + "." + columnName);
+                        for (String func : agg.getfunctionagg()) {
+                            switch (func.toUpperCase()) {
+                                case "MAX":
+                                    aggregateExpr = SQLExpressions.max(Expressions.numberTemplate(Double.class, aggregateExpr.toString()));
+                                    break;
+                                case "MIN":
+                                    aggregateExpr = SQLExpressions.min(Expressions.numberTemplate(Double.class, aggregateExpr.toString()));
+                                    break;
+                                case "AVG":
+                                    aggregateExpr = SQLExpressions.avg(Expressions.numberTemplate(Double.class, aggregateExpr.toString()));
+                                    break;
+                                case "SUM":
+                                    aggregateExpr = SQLExpressions.sum(Expressions.numberTemplate(Double.class, aggregateExpr.toString()));
+                                    break;
+                                case "COUNT":
+                                    aggregateExpr = SQLExpressions.count(aggregateExpr);
+                                    break;
+                            }
+                        }
                     }
-                }
 
-                // Generate alias with all applied functions
-                String alias = String.join("_", agg.getfunctionagg()).toLowerCase() + "_" + tableName + "_" + columnName;
-                Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
-                selectExpressions.add(aliasedExpr);
-                aliasMapping.put(alias, aliasedExpr);
+                    String alias = String.join("_", agg.getfunctionagg()).toLowerCase() + "_" + tableName + "_" + columnName;
+                    Expression<?> aliasedExpr = Expressions.as(aggregateExpr, alias);
+                    selectExpressions.add(aliasedExpr);
+                    aliasMapping.put(alias, aliasedExpr);
+                }
             }
         }
     }
-}
 
     
   
@@ -1921,12 +1989,12 @@ applyWhereWithSubquery(query, filter, column, subquery);
    */
       public List<Map<String, Object>> fetchTableDataWithCondition2(Requete request) {
           // Validate request
-          if (request.gettables() == null || request.gettables().isEmpty()) {
+          if (request.getTableId() == null || request.getTableId().isEmpty()) {
               throw new IllegalArgumentException("At least one table ID must be provided");
           }
           
           // Get primary table (first in the list)
-          Long primaryTableId = request.gettables().get(0);
+          Long primaryTableId = request.getTableId().get(0);
           DbTable primaryTable = tableRepository.findById(primaryTableId)
                   .orElseThrow(() -> new RuntimeException("Primary table not found with ID: " + primaryTableId));
           
@@ -1958,7 +2026,7 @@ applyWhereWithSubquery(query, filter, column, subquery);
               List<DbTable> tables = new ArrayList<>();
               Map<Long, DbTable> tableIdMap = new HashMap<>();
               
-              for (Long tableId : request.gettables()) {
+              for (Long tableId : request.getTableId()) {
                   DbTable table = tableRepository.findById(tableId)
                           .orElseThrow(() -> new RuntimeException("Table not found with ID: " + tableId));
                   tables.add(table);
