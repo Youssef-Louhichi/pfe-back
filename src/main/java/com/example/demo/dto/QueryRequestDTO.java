@@ -4,6 +4,7 @@
 
 import com.example.demo.condition.AggregationRequest;
 import com.example.demo.condition.FilterCondition;
+import com.example.demo.condition.OrderBy;
 import com.example.demo.having.HavingCondition;
 import com.example.demo.requete.Requete;
 	
@@ -21,10 +22,32 @@ import com.example.demo.requete.Requete;
 		 private List<AggregationRequest> aggregations; 
 		 private List<HavingCondition> HavingConditions;
 		 
+		 private List<OrderBy> orderBy ;
+		 
+		 private Integer  limit ;
 		 
 		 
 		 
-		 public List<HavingCondition> getHavingConditions() {
+		 
+		 public Integer getLimit() {
+			return limit;
+		}
+
+		public void setLimit(Integer limit) {
+			this.limit = limit;
+		}
+
+		
+
+		public List<OrderBy> getOrderBy() {
+			return orderBy;
+		}
+
+		public void setOrderBy(List<OrderBy> orderBy) {
+			this.orderBy = orderBy;
+		}
+
+		public List<HavingCondition> getHavingConditions() {
 			return HavingConditions;
 		}
 

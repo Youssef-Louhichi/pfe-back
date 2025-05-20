@@ -16,6 +16,7 @@ import com.example.demo.tables.DbTable;
 import com.example.demo.users.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -57,8 +58,8 @@ public class Requete implements Serializable{
     private List<HavingCondition> HavingConditions;
     
     
-    
-    private List<Long> tables;
+    @Column(name="Tables")
+    private List<Long> tableId;
     
     private List<Long> ColumnId;
     
@@ -117,14 +118,12 @@ public class Requete implements Serializable{
 		this.aggregation = aggregation;
 	}
 
-	public List<Long> gettables() {
-		return tables;
+	public List<Long> getTableId() {
+		return tableId;
 	}
-
-	public void settables(List<Long> tables) {
-		this.tables = tables;
+	public void setTableId(List<Long> tableId) {
+		this.tableId = tableId;
 	}
-
 	public List<Long> getColumnId() {
 		return ColumnId;
 	}
