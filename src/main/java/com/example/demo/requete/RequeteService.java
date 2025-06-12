@@ -2,16 +2,25 @@ package com.example.demo.requete;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.condition.FilterCondition;
 import com.example.demo.condition.JoinCondition;
+import com.example.demo.dto.SuggestionRequestDto;
+import com.example.demo.dto.SuggestionResponseDto;
 import com.example.demo.querydsl.DynamicQueryService;
 import com.example.demo.reqscript.ReqScript;
 import com.example.demo.reqscript.ReqScriptRepository;
@@ -189,6 +198,30 @@ public class RequeteService {
         
         return allResults;
     }
+    
+    @Autowired
+    private RestTemplate restTemplate;
+
+    
+    public SuggestionResponseDto fetchSuggestions(Map<String, Object> request) {
+        RestTemplate restTemplate = new RestTemplate();
+        String flaskUrl = "http://localhost:5000/api/suggestions"; 
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> httpEntity = new HttpEntity<>(request, headers);
+
+        ResponseEntity<SuggestionResponseDto> response = restTemplate.exchange(
+            flaskUrl,
+            HttpMethod.POST,
+            httpEntity,
+            SuggestionResponseDto.class
+        );
+
+        return response.getBody();
+    }
+
     
     
     

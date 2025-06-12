@@ -32,6 +32,7 @@ private static final long serialVersionUID = 1L;
     
     private String chartType ; 
     private List<String> colors ;
+    private String fontSize; 
     private String columnX ;
     private String columnY ;
     @Lob
@@ -170,6 +171,12 @@ private static final long serialVersionUID = 1L;
 	public Graph ()
 	{
 		
+	}
+	public String getFontSize() {
+		return fontSize;
+	}
+	public void setFontSize(String fontSize) {
+		this.fontSize = fontSize;
 	}
     
     

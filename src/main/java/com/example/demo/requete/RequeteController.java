@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.QueryRequestDTO;
+import com.example.demo.dto.SuggestionRequestDto;
+import com.example.demo.dto.SuggestionResponseDto;
 
 
 
@@ -108,6 +110,13 @@ public class RequeteController {
 	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
 	        }
 	    }
+	    
+	    @PostMapping("/suggestions")
+	    public ResponseEntity<?> getSuggestions(@RequestBody Map<String, Object> body) {
+	        SuggestionResponseDto response = requeteService.fetchSuggestions(body);
+	        return ResponseEntity.ok(response);
+	    }
+
 	    
 	    
 	    
