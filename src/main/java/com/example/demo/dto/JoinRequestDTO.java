@@ -14,4 +14,9 @@ public class JoinRequestDTO {
 	    public void setJoinConditions(List<JoinCondition> joinConditions) {
 	        this.joinConditions = joinConditions;
 	    }
+
+		public boolean isEmpty() {
+			// TODO Auto-generated method stub
+			return false;
+		}
 }

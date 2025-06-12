@@ -42,6 +42,7 @@ public class RapportController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRapport(@PathVariable Long id) {
         try {
+        	System.out.println("allo");
             rapportService.deleteRapport(id);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (Exception e) {
