@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,31 +25,45 @@ public class QueryController {
 	
 	
 	private  DynamicQueryService dynamicQueryService;
+	
+	private LmdService lmdservice;
 
     @Autowired
     public void DynamicQueryController(DynamicQueryService dynamicQueryService) {
         this.dynamicQueryService = dynamicQueryService;
+    }
+    
+    @Autowired
+    public void DynamicQueryController2(LmdService lmdservice) {
+        this.lmdservice = lmdservice;
     }
 
     
     
     
     @PostMapping("/fetch")
-    public ResponseEntity<List<Map<String, Object>>> fetchTableData(@RequestBody QueryRequestDTO request) {
+    public ResponseEntity<?> fetchTableData(@RequestBody QueryRequestDTO request) {
     	
     
+    	try {
     	List<Map<String, Object>> result = dynamicQueryService.fetchTableDataWithCondition(request);
+    	
                 
 
        
 
         return ResponseEntity.ok(result);
+    	}
+    	catch (Exception  e) {
+    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+    	            .body("A server error occurred. Please check your query or try again later.");
+    	}
     }
     
     
     @PostMapping("/insert")
     public ResponseEntity<Map<String, Object>> insertTableData(@RequestBody InsertRequestDTO request) {
-        Long rowsAffected = dynamicQueryService.insertTableData(request);
+        Long rowsAffected = lmdservice.insertTableData(request);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -60,7 +75,7 @@ public class QueryController {
     
     @PostMapping("/update")
     public ResponseEntity<Map<String, Object>> UpdateTableData(@RequestBody UpdateRequestDTO request) {
-        Long rowsAffected = dynamicQueryService.updateTableDataWithJoins(request);
+        Long rowsAffected = lmdservice.updateTableDataWithJoins(request);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -72,7 +87,7 @@ public class QueryController {
     
     @PostMapping("/delete")
     public ResponseEntity<Map<String, Object>> DeleteTableData(@RequestBody DeleteRequestDTO request) {
-        Long rowsAffected = dynamicQueryService.deleteTableDataWithJoins(request);
+        Long rowsAffected = lmdservice.deleteTableDataWithJoins(request);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

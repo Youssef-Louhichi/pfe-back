@@ -80,7 +80,7 @@ public class ReqScriptService {
 
         List<ReqScript> scripts = scriptrepository.findByUserIdentif(userId);
         if (scripts.isEmpty()) {
-            throw new EntityNotFoundException("No scripts found for user with id: " + userId);
+           return scripts ;
         }
         return scripts;
     }
